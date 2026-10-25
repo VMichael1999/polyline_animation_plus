@@ -1,3 +1,9 @@
+// Based on google_map_animation by Manish Relani (BSD-3-Clause).
+// https://github.com/manishrelani/google_map_animation
+// See LICENSE for the original notice and the changes made in this fork.
+// Internal, not exported: public API docs are only required for exported code.
+// ignore_for_file: public_member_api_docs
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
@@ -9,6 +15,7 @@ class AnimatedMarkersManager {
     required Duration duration,
     required this.onUpdateMarkers,
     required this.onRemoveMarkers,
+    this.useMarkerRotation = false,
   }) {
     // 16.67 ms per frame for 60 FPS (1000 ms / 60 FPS) ~= 16.67 ms
     totalFrames = (duration.inMilliseconds / 16.67).round();
@@ -20,6 +27,9 @@ class AnimatedMarkersManager {
 
   late final int totalFrames;
   late final AnimationController _animationController;
+
+  /// See [MarkerController.useMarkerRotation].
+  final bool useMarkerRotation;
 
   final ValueChanged<Set<Marker>> onUpdateMarkers;
   final ValueChanged<Set<MarkerId>> onRemoveMarkers;

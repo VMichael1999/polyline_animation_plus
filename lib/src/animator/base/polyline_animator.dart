@@ -1,25 +1,43 @@
+// Based on google_map_animation by Manish Relani (BSD-3-Clause).
+// https://github.com/manishrelani/google_map_animation
+// See LICENSE for the original notice and the changes made in this fork.
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
-/// This abstract class defines the properties needed to animate a polyline
-/// on a Google Map
+/// Describes how a polyline is animated on a Google Map.
+///
+/// Extend it and implement [animate] to create your own animation. The
+/// controller calls [animate] on every frame with the original polyline and
+/// the current progress, and draws the polyline it returns.
 abstract class PolylineAnimator {
+  /// Time the animation takes to go from progress 0 to 1, without the delays.
   final Duration duration;
+
+  /// Curve applied to the progress passed to [animate].
   final Curve curve;
+
+  /// Whether the animation starts again when it ends.
   final bool repeat;
+
+  /// When repeating, whether the animation plays backwards on every other
+  /// cycle instead of jumping back to the start.
   final bool reverse;
 
-  /// Delay before the animation starts
-  /// This is usefull for repeating animations where you want to wait before starting the next cycle
+  /// Time to wait, with the progress at 0, before each cycle starts drawing.
+  ///
+  /// It is added to [duration], it does not shorten it.
   final Duration delayStart;
 
-  /// Delay after the animation ends
-  /// This is useful for repeating animations where you want to wait before starting the next cycle
+  /// Time to wait, with the progress at 1, after each cycle finishes drawing.
+  ///
+  /// It is added to [duration], it does not shorten it.
   final Duration delayEnd;
 
-  /// Number of times to repeat the animation (null means infinite)
+  /// Number of cycles to play when [repeat] is true. `null` means forever.
   final int? repeatCount;
 
+  /// Creates an animator. Subclasses pass their own defaults.
   const PolylineAnimator({
     required this.duration,
     this.curve = Curves.linear,
@@ -30,8 +48,15 @@ abstract class PolylineAnimator {
     this.delayEnd = Duration.zero,
   });
 
+  /// Returns the polyline to draw for the given [progress], between 0 and 1.
+  ///
+  /// [polyline] is always the original polyline, not the previous frame.
   Polyline animate(Polyline polyline, double progress);
 
+  /// Called once when the animation reaches its end.
+  ///
+  /// It is not called when the animation is disposed or removed before it
+  /// finishes, nor for animations that repeat forever, because they never end.
   void onAnimationStop() {}
 
   @override
@@ -49,16 +74,21 @@ abstract class PolylineAnimator {
         curve == other.curve &&
         repeat == other.repeat &&
         repeatCount == other.repeatCount &&
-        reverse == other.reverse;
+        reverse == other.reverse &&
+        delayStart == other.delayStart &&
+        delayEnd == other.delayEnd;
   }
 
   @override
-  int get hashCode =>
-      duration.hashCode ^
-      curve.hashCode ^
-      repeat.hashCode ^
-      (repeatCount?.hashCode ?? 0) ^
-      reverse.hashCode;
+  int get hashCode => Object.hash(
+        duration,
+        curve,
+        repeat,
+        repeatCount,
+        reverse,
+        delayStart,
+        delayEnd,
+      );
 
   @override
   String toString() {

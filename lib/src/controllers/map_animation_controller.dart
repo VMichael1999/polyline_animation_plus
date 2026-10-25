@@ -1,3 +1,7 @@
+// Based on google_map_animation by Manish Relani (BSD-3-Clause).
+// https://github.com/manishrelani/google_map_animation
+// See LICENSE for the original notice and the changes made in this fork.
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
@@ -5,19 +9,39 @@ import '../managers/animated_marker_manager.dart';
 import '../managers/animated_polyline_manager.dart';
 import '../model/animated_polyline.dart';
 
+/// Called with the polyline that was just drawn on the map.
 typedef PolylineListener = void Function(Polyline);
+
+/// Called with the markers that were just updated on the map.
 typedef MarkerListener = void Function(Set<Marker>);
 
+/// Animates polylines and markers on a Google Map.
+///
+/// It draws directly on the map with the given [mapId], so the `GoogleMap`
+/// widget must not receive polylines or markers with the same IDs. Call
+/// [dispose] when the map goes away.
 final class MapAnimationController {
+  /// Drives the animations, usually the `State` of the map widget mixed with
+  /// `TickerProviderStateMixin`.
   final TickerProvider vsync;
 
+  /// Called every time animated markers are updated, once per frame.
   final MarkerListener? markerListener;
 
+  /// ID of the map to draw on, from `GoogleMapController.mapId`.
   final int mapId;
+
+  /// Use [Marker.rotation] as the rotation of animated markers instead of the
+  /// heading between consecutive positions. Default is false.
+  final bool useMarkerRotation;
 
   /// Duration for marker animation transitions. Default is 2 second.
   final Duration markersAnimationDuration;
 
+  /// Creates a controller and immediately draws [markers] and [polylines].
+  ///
+  /// Polylines with a [AnimatedPolyline.polylineAnimator] are animated, the
+  /// others are drawn as they are.
   MapAnimationController({
     required this.mapId,
     required this.vsync,
@@ -25,6 +49,7 @@ final class MapAnimationController {
     Set<AnimatedPolyline> polylines = const {},
     this.markersAnimationDuration = const Duration(milliseconds: 2000),
     this.markerListener,
+    this.useMarkerRotation = false,
   }) {
     _initialize(markers, polylines);
   }
@@ -55,6 +80,7 @@ final class MapAnimationController {
       duration: markersAnimationDuration,
       onUpdateMarkers: _updateMarker,
       onRemoveMarkers: _removeMarker,
+      useMarkerRotation: useMarkerRotation,
     );
 
     _animatedMarkersManager.push(markerSet);
@@ -84,6 +110,11 @@ final class MapAnimationController {
     _updatePolylinesOnMap({}, _polylines.values.toSet());
   }
 
+  /// Sets the markers shown on the map.
+  ///
+  /// [updatedMarkers] is the full set: markers that are not in it are removed.
+  /// A marker that is already on the map glides to its new position. Positions
+  /// that arrive during a move wait in a queue.
   void updateMarkers(Set<Marker> updatedMarkers) {
     final newMarkersById = keyByMarkerId(updatedMarkers);
 
@@ -226,6 +257,9 @@ final class MapAnimationController {
     );
   }
 
+  /// Stops all animations and releases their resources.
+  ///
+  /// The controller cannot be used afterwards.
   void dispose() {
     _animatedMarkersManager.dispose();
     _animatedPolylineManager.dispose();

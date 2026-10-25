@@ -32,3 +32,6 @@ build/
 
 # Ensure demo asset is included in package
 !doc/demo.gif
+
+# Coverage
+coverage/

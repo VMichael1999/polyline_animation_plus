@@ -1,3 +1,5 @@
+// Internal, not exported: public API docs are only required for exported code.
+// ignore_for_file: public_member_api_docs
 //https://github.com/googlemaps/android-maps-utils
 
 // Dart imports:

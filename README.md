@@ -1,56 +1,62 @@
 # polyline_animation_plus
 
-A Flutter package for creating smooth, customizable polyline animations on Google Maps. Ideal for apps in transportation, delivery, logistics, tracking, or any project that needs animated route visualizations.
+[![pub package](https://img.shields.io/pub/v/polyline_animation_plus.svg)](https://pub.dev/packages/polyline_animation_plus)
+[![CI](https://github.com/VMichael1999/polyline_animation_plus/actions/workflows/ci.yml/badge.svg)](https://github.com/VMichael1999/polyline_animation_plus/actions/workflows/ci.yml)
+[![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
-## 🎥 Demo
+**English** · [Español](README.es.md)
+
+Smooth, customizable polyline and marker animations for Google Maps in Flutter. Useful for transportation, delivery, logistics, tracking or any app that needs animated routes.
+
+> Fork of [google_map_animation](https://github.com/manishrelani/google_map_animation) by Manish Relani (BSD-3-Clause). See [Credits and license](#credits-and-license).
 
 <p align="center">
-<img src="doc/demo.gif" width="30%" alt="Floating Bubble Overlay Demo" />
-<br>
-This animation represents how the plugin behaves
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/demo.gif" width="30%" alt="Animated polyline drawing on Google Maps" />
+  <br>
+  <em>An animated polyline drawn with this package.</em>
 </p>
 
----
+## Contents
 
-## ✨ Features
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Built-in animators](#built-in-animators)
+- [Create your own animator](#create-your-own-animator)
+- [Animated markers](#animated-markers)
+- [Important: do not reuse IDs in `GoogleMap`](#important-do-not-reuse-ids-in-googlemap)
+- [Contributing](#contributing)
+- [Credits and license](#credits-and-license)
 
-- 🎬 **Animated polylines** with progressive drawing effects
-- 🔁 **Repeatable** or one‑shot animations
-- ⏱️ **Custom duration**, delay, and animation curves
-- 🗺️ Works on **Android & iOS** (Google Maps)
-- 🧩 Supports **multiple animated polylines** simultaneously
-- ⚡ Built using the `google_maps_flutter_platform_interface`
+## Features
 
----
+- Animated polylines with progressive drawing effects.
+- Repeating or one-shot animations, with custom duration, curve and delays.
+- Several animated polylines at the same time.
+- Animated markers that glide between positions and turn towards the direction of travel.
+- Works on Android, iOS and web.
+- Built on `google_maps_flutter_platform_interface`: it does not depend on a specific map widget version.
 
-## 🚀 Getting Started
+## Requirements
 
-Add the package to your `pubspec.yaml`:
+- Flutter 3.22 or newer (Dart 3.4 or newer).
+- A map using [`google_maps_flutter`](https://pub.dev/packages/google_maps_flutter), already set up with its API keys.
+
+## Installation
 
 ```yaml
 dependencies:
   polyline_animation_plus: ^1.0.4
 ```
 
-Or if using locally (for development):
-
-```yaml
-dependencies:
-  polyline_animation_plus:
-    path: ../polyline_animation_plus
-```
-
-Import it:
-
 ```dart
 import 'package:polyline_animation_plus/polyline_animation_plus.dart';
 ```
 
----
+## Quick start
 
-## 📌 Usage Example
-
-Below is a basic example of how to animate a polyline on Google Maps.
+Create a `MapAnimationController` when the map is ready and give it the polylines to draw. A polyline with an animator is animated; a polyline without one is drawn as it is.
 
 ```dart
 final Set<AnimatedPolyline> polylines = {
@@ -71,6 +77,7 @@ final Set<AnimatedPolyline> polylines = {
       delayStart: Duration(seconds: 1),
     ),
   ),
+  // No animator: drawn as it is.
   AnimatedPolyline(
     polyline: Polyline(
       polylineId: const PolylineId('back'),
@@ -83,46 +90,100 @@ final Set<AnimatedPolyline> polylines = {
 
 late MapAnimationController mapAnimationController;
 
-onMapCreated(GoogleMapController controller) {
+void onMapCreated(GoogleMapController controller) {
   mapAnimationController = MapAnimationController(
     mapId: controller.mapId,
-    vsync: this,
+    vsync: this, // a State with TickerProviderStateMixin
     polylines: polylines,
   );
 }
+
+@override
+void dispose() {
+  mapAnimationController.dispose();
+  super.dispose();
+}
 ```
 
-More complete examples can be found in the `/example` folder.
+`MapAnimationUtils.generateEquidistantPolylineByDuration` adds points so they are evenly spaced, which makes progressive animations move at a constant speed. A complete app is in the [`example`](example) folder.
 
----
+To change the polylines later, call `mapAnimationController.updatePolylines(newSet)`. Polylines missing from the new set are removed.
 
-## 📚 Additional Information
+## Built-in animators
 
-- Issues and feature requests: **GitHub Issues**
-- Repository: https://github.com/MICHAELVM01/polyline_animation_plus
-- Contributions are welcome! Submit PRs to improve animations or extend support.
-- This package is developed by **ToolRides** for advanced route visualizations in transportation and mobility apps.
+All animators share these options: `duration`, `curve`, `repeat`, `repeatCount`, `reverse`, `delayStart` and `delayEnd`. The delays are added to `duration`; they do not shorten it.
 
-## 👤 Author / Developer
+| Animator | What it does |
+| --- | --- |
+| `SnackAnimator` | Draws the line from start to end, then erases it in the same direction. |
+| `FadeInProgressiveAnimator` | Fades the line in during the first 30% and then erases it from the start. |
+| `ColorTransitionAnimation` | Changes the color smoothly through a list of `colors`. |
 
-**Michael Anthony Valdiviezo Maza**
+## Create your own animator
 
-Flutter & Mobile Developer focused on mobility, ride‑hailing, logistics and real‑time map experiences. Creator of ToolRides solutions and open‑source packages for advanced transportation interfaces.
+Extend `PolylineAnimator` and return the polyline to draw for a given `progress` (from 0 to 1):
 
-**Areas of focus**
-- Google Maps & geolocation (polylines, tracking, animations)
-- Ride‑hailing / fleet dispatch flows
-- Real‑time mobility UX and performance optimization
-- White‑label transportation platforms (B2B & B2C)
+```dart
+class BlinkAnimator extends PolylineAnimator {
+  const BlinkAnimator()
+      : super(duration: const Duration(seconds: 1), repeat: true);
 
-**Connect**
-- GitHub: https://github.com/MICHAELVM01
+  @override
+  Polyline animate(Polyline polyline, double progress) {
+    return polyline.copyWith(
+      colorParam: polyline.color.withAlpha((progress * 255).round()),
+    );
+  }
+}
+```
 
-If you use this package in your project, feel free to open an issue or PR — contributions and ideas are welcome.
+`polyline` is always the original polyline, not the previous frame.
 
----
+## Animated markers
 
+Pass the markers to the same controller and call `updateMarkers` each time a position changes, for example on every GPS update. The marker glides from its previous position to the new one and rotates towards the direction of travel.
 
-## 📄 License
+```dart
+mapAnimationController = MapAnimationController(
+  mapId: controller.mapId,
+  vsync: this,
+  markers: {
+    Marker(markerId: const MarkerId('driver'), position: start),
+  },
+  // How long each move takes. Default: 2 seconds.
+  markersAnimationDuration: const Duration(seconds: 2),
+  // Called with the markers updated on every animation frame.
+  markerListener: (markers) {},
+);
 
-MIT License — feel free to use it in commercial and open‑source projects.
+// When a new position arrives, send the full set of markers:
+mapAnimationController.updateMarkers({
+  Marker(markerId: const MarkerId('driver'), position: newPosition),
+});
+```
+
+- `updateMarkers` receives **all** the markers: the ones you leave out are removed from the map.
+- Positions that arrive while a marker is still moving wait in a queue and are played in order.
+- A marker that does not move keeps its rotation. Set `useMarkerRotation: true` to use `Marker.rotation` instead of the heading between positions.
+
+## Important: do not reuse IDs in `GoogleMap`
+
+The controller draws directly on the map, using the `mapId`. If the `GoogleMap` widget also receives a polyline or marker with the same ID in its `polylines` or `markers`, the widget overwrites what the controller draws. Give the controller its own IDs and leave them out of the widget's sets.
+
+## Contributing
+
+Issues and pull requests are welcome at [github.com/VMichael1999/polyline_animation_plus](https://github.com/VMichael1999/polyline_animation_plus). Before opening a pull request, run:
+
+```bash
+dart format --set-exit-if-changed lib test
+flutter analyze
+flutter test
+```
+
+See the [CHANGELOG](CHANGELOG.md) for what changed in each version.
+
+## Credits and license
+
+This package is a fork of [google_map_animation](https://github.com/manishrelani/google_map_animation) by Manish Relani and builds on his work. It is maintained by [Michael Anthony Valdiviezo Maza](https://github.com/VMichael1999).
+
+BSD 3-Clause. The original code is © 2025 Manish Relani; the changes in this fork are © 2025 Michael Anthony Valdiviezo Maza. Both notices are in [LICENSE](LICENSE) and must be kept in copies.

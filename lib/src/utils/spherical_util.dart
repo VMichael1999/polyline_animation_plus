@@ -1,3 +1,9 @@
+// Based on google_map_animation by Manish Relani (BSD-3-Clause).
+// https://github.com/manishrelani/google_map_animation
+// See LICENSE for the original notice and the changes made in this fork.
+// Internal, not exported: public API docs are only required for exported code.
+// ignore_for_file: public_member_api_docs
+
 import 'dart:math';
 
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
@@ -91,8 +97,7 @@ class SphericalUtil {
       // No solution which would make sense in LatLng-space.
       return null;
     }
-    final fromLngRadians =
-        MathUtil.toRadians(to.longitude) -
+    final fromLngRadians = MathUtil.toRadians(to.longitude) -
         atan2(n3, n1 * cos(fromLatRadians) - n2 * sin(fromLatRadians));
     return LatLng(
       MathUtil.toDegrees(fromLatRadians).toDouble(),
@@ -149,11 +154,11 @@ class SphericalUtil {
   /// Returns the angle between two LatLngs, in radians. This is the same as the
   /// distance on the unit sphere.
   static num computeAngleBetween(LatLng from, LatLng to) => distanceRadians(
-    MathUtil.toRadians(from.latitude),
-    MathUtil.toRadians(from.longitude),
-    MathUtil.toRadians(to.latitude),
-    MathUtil.toRadians(to.longitude),
-  );
+        MathUtil.toRadians(from.latitude),
+        MathUtil.toRadians(from.longitude),
+        MathUtil.toRadians(to.latitude),
+        MathUtil.toRadians(to.longitude),
+      );
 
   /// Returns the distance between two LatLngs, in meters.
   static num computeDistanceBetween(LatLng from, LatLng to) =>
