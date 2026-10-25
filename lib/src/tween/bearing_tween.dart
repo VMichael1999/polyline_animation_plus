@@ -18,11 +18,6 @@ class BearingTween extends Tween<double> {
   @override
   double get end => super.end!;
 
-  void swap(double newBearing) {
-    begin = end;
-    end = newBearing;
-  }
-
   @override
   double lerp(double t) {
     assert(t >= 0 && t <= 1, 'value must between 0.0 and 1.0');

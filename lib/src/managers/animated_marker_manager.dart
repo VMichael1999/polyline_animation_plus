@@ -4,134 +4,161 @@
 // Internal, not exported: public API docs are only required for exported code.
 // ignore_for_file: public_member_api_docs
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
 import '../controllers/marker_controller.dart';
+import '../model/marker_animation.dart';
 
+/// Animates a set of markers.
+///
+/// Every marker has its own [MarkerController], so each one moves at its own
+/// pace. A single ticker drives all of them and the changes of a frame are sent
+/// together, so the cost per frame does not grow with one map call per marker.
 class AnimatedMarkersManager {
   AnimatedMarkersManager({
     required TickerProvider vsync,
-    required Duration duration,
     required this.onUpdateMarkers,
     required this.onRemoveMarkers,
     this.useMarkerRotation = false,
-  }) {
-    // 16.67 ms per frame for 60 FPS (1000 ms / 60 FPS) ~= 16.67 ms
-    totalFrames = (duration.inMilliseconds / 16.67).round();
-
-    _animationController = AnimationController(vsync: vsync, duration: duration)
-      ..addStatusListener(_statusListener)
-      ..addListener(listener);
+    this.mode = MarkerAnimationMode.queue,
+    this.duration = const MarkerDuration.fixed(Duration(seconds: 2)),
+    Duration Function()? clock,
+  }) : _clock = clock ?? _stopwatchClock() {
+    _ticker = vsync.createTicker(_onTick);
   }
 
-  late final int totalFrames;
-  late final AnimationController _animationController;
+  /// A real clock, used only to measure the time between positions.
+  static Duration Function() _stopwatchClock() {
+    final stopwatch = Stopwatch()..start();
+    return () => stopwatch.elapsed;
+  }
 
-  /// See [MarkerController.useMarkerRotation].
+  /// Frames closer than this are merged into one update, which keeps the map
+  /// calls at about 60 per second on high refresh rate screens.
+  static const Duration minUpdateInterval = Duration(milliseconds: 16);
+
   final bool useMarkerRotation;
+  final MarkerAnimationMode mode;
+  final MarkerDuration duration;
 
   final ValueChanged<Set<Marker>> onUpdateMarkers;
   final ValueChanged<Set<MarkerId>> onRemoveMarkers;
 
-  final Map<MarkerId, MarkerController> _controllers = {};
+  final Duration Function() _clock;
+  late final Ticker _ticker;
 
+  final Map<MarkerId, MarkerController> _controllers = {};
   final Set<MarkerId> _markersToBeRemoved = {};
 
-  int _lastFrameIndex = -1;
+  /// Changes computed but not yet sent to the map.
+  final Map<MarkerId, Marker> _pending = {};
 
-  bool _isRestarting = false;
+  /// The timeline keeps growing across ticker restarts: [_base] is the time
+  /// accumulated by earlier runs and [_elapsed] the time of the current one.
+  Duration _base = Duration.zero;
+  Duration _elapsed = Duration.zero;
+  Duration _lastUpdate = Duration.zero;
 
-  bool get isAnimating => _animationController.isAnimating;
+  Duration get _timeline => _base + _elapsed;
 
+  bool get isAnimating => _controllers.values.any((c) => c.isMoving);
+
+  /// Sets the markers to show. New markers appear where they are; known
+  /// markers move to their new state.
   void push(Set<Marker> markers) {
-    for (var marker in markers) {
-      final controller = _controllers[marker.markerId] ??= MarkerController(
-        marker: marker,
-        animationController: _animationController,
+    for (final marker in markers) {
+      _markersToBeRemoved.remove(marker.markerId);
+
+      final controller = _controllers[marker.markerId];
+      if (controller == null) {
+        _controllers[marker.markerId] = MarkerController(
+          marker: marker,
+          useMarkerRotation: useMarkerRotation,
+          mode: mode,
+          duration: duration,
+        );
+        continue;
+      }
+
+      final immediate = controller.push(
+        marker,
+        timeline: _timeline,
+        wallClock: _clock(),
       );
+      if (immediate != null) _pending[marker.markerId] = immediate;
+    }
 
-      controller.pushToQueue(marker);
-    }
-    if (!isAnimating) {
-      _animateMarkers();
-    }
+    _flush();
+    if (isAnimating && !_ticker.isActive) _ticker.start();
   }
 
-  void _animateMarkers() {
-    bool animationRequired = false;
-    for (var controller in _controllers.values) {
-      if (!animationRequired && controller.hasMarker) {
-        animationRequired = true;
-      }
-      controller.setupNextMarker();
-    }
-
-    if (animationRequired) {
-      _lastFrameIndex = -1;
-
-      // reset() reports `dismissed` synchronously. Without this guard the status
-      // listener would start the next queued move before this one began, and
-      // the marker would skip a position.
-      _isRestarting = true;
-      _animationController.reset();
-      _isRestarting = false;
-      _animationController.forward();
-    }
-  }
-
+  /// Removes a marker. A marker that is moving finishes its moves first.
   void removeMarker(MarkerId markerId) {
-    if (!isAnimating) {
-      _controllers.remove(markerId);
-      onRemoveMarkers({markerId});
-    } else {
+    final controller = _controllers[markerId];
+    if (controller != null && controller.isMoving) {
       _markersToBeRemoved.add(markerId);
+      return;
+    }
+    _controllers.remove(markerId);
+    _pending.remove(markerId);
+    onRemoveMarkers({markerId});
+  }
+
+  void _onTick(Duration elapsed) {
+    _elapsed = elapsed;
+    final timeline = _timeline;
+
+    var finished = false;
+    for (final entry in _controllers.entries) {
+      final controller = entry.value;
+      final marker = controller.tick(timeline);
+      if (marker == null) continue;
+      _pending[entry.key] = marker;
+      if (!controller.isMoving) finished = true;
+    }
+
+    if (finished || timeline - _lastUpdate >= minUpdateInterval) {
+      _flush();
+      _lastUpdate = timeline;
+    }
+
+    if (finished) _removeFinishedMarkers();
+
+    if (!isAnimating) {
+      _flush();
+      _ticker.stop();
+      _base = timeline;
+      _elapsed = Duration.zero;
     }
   }
 
-  void _clearMarkersToBeRemoved() {
-    if (_markersToBeRemoved.isNotEmpty) {
-      for (var markerId in _markersToBeRemoved) {
-        _controllers.remove(markerId);
-      }
-
-      onRemoveMarkers(_markersToBeRemoved.toSet());
-      _markersToBeRemoved.clear();
-    }
+  void _flush() {
+    if (_pending.isEmpty) return;
+    final markers = _pending.values.toSet();
+    _pending.clear();
+    onUpdateMarkers(markers);
   }
 
-  void _statusListener(AnimationStatus status) {
-    if (_isRestarting) return;
+  void _removeFinishedMarkers() {
+    final ready = _markersToBeRemoved
+        .where((id) => !(_controllers[id]?.isMoving ?? false))
+        .toSet();
+    if (ready.isEmpty) return;
 
-    if (status case (AnimationStatus.completed || AnimationStatus.dismissed)) {
-      _clearMarkersToBeRemoved();
-
-      final isMarkerinQueue = _controllers.values.any((m) => m.hasMarker);
-
-      if (isMarkerinQueue) _animateMarkers();
+    for (final id in ready) {
+      _controllers.remove(id);
+      _pending.remove(id);
     }
-  }
-
-  void listener() {
-    final t = _animationController.value;
-    final frameIndex = (t * totalFrames).floor();
-
-    if (frameIndex == _lastFrameIndex) return; // Skip duplicate frames
-    _lastFrameIndex = frameIndex;
-
-    final Set<Marker> markerPosition = {};
-
-    for (var controller in _controllers.values) {
-      markerPosition.add(controller.animate(_animationController.value));
-    }
-    onUpdateMarkers(markerPosition);
+    _markersToBeRemoved.removeAll(ready);
+    onRemoveMarkers(ready);
   }
 
   void dispose() {
-    _animationController.removeStatusListener(_statusListener);
-    _animationController.removeListener(listener);
-    _animationController.dispose();
+    _ticker.dispose();
     _controllers.clear();
     _markersToBeRemoved.clear();
+    _pending.clear();
   }
 }

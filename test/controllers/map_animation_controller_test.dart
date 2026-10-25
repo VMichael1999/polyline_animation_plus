@@ -41,6 +41,8 @@ void main() {
     Set<Marker> markers = const {},
     Set<AnimatedPolyline> polylines = const {},
     MarkerListener? markerListener,
+    MarkerAnimationMode mode = MarkerAnimationMode.queue,
+    MarkerDuration? markerDuration,
   }) =>
       MapAnimationController(
         mapId: _mapId,
@@ -48,6 +50,8 @@ void main() {
         markers: markers,
         polylines: polylines,
         markerListener: markerListener,
+        markerAnimationMode: mode,
+        markerDuration: markerDuration,
       );
 
   group('initial state', () {
@@ -146,6 +150,37 @@ void main() {
       controller.dispose();
     });
 
+    testWidgets('latestOnly goes to the newest position', (tester) async {
+      final controller = create(
+        tester,
+        markers: {_marker(_a, const LatLng(0, 0))},
+        mode: MarkerAnimationMode.latestOnly,
+      );
+
+      for (var i = 1; i <= 4; i++) {
+        controller.updateMarkers({_marker(_a, LatLng(0, i.toDouble()))});
+        await _pumpFor(tester, const Duration(milliseconds: 500));
+      }
+      await _pumpFor(tester, const Duration(milliseconds: 2100));
+
+      expect(platform.markers[_a]!.position.longitude, closeTo(4, 1e-9));
+      controller.dispose();
+    });
+
+    testWidgets('markerDuration sets how long a move lasts', (tester) async {
+      final controller = create(
+        tester,
+        markers: {_marker(_a, const LatLng(0, 0))},
+        markerDuration: const MarkerDuration.fixed(Duration(milliseconds: 400)),
+      );
+
+      controller.updateMarkers({_marker(_a, const LatLng(0, 1))});
+      await _pumpFor(tester, const Duration(milliseconds: 500));
+
+      expect(platform.markers[_a]!.position.longitude, closeTo(1, 1e-9));
+      controller.dispose();
+    });
+
     testWidgets('removes markers that are no longer present', (tester) async {
       final controller = create(
         tester,
@@ -161,7 +196,7 @@ void main() {
       controller.dispose();
     });
 
-    testWidgets('defers removal while an animation is running', (
+    testWidgets('a marker that is moving is removed when its move ends', (
       tester,
     ) async {
       final controller = create(
@@ -173,17 +208,36 @@ void main() {
       );
 
       controller.updateMarkers({
-        _marker(_a, const LatLng(0, 1)),
-        _marker(_b, const LatLng(1, 1)),
+        _marker(_a, const LatLng(0, 0)),
+        _marker(_b, const LatLng(1, 2)),
       });
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      // b is removed while the animation is running.
-      controller.updateMarkers({_marker(_a, const LatLng(0, 1))});
+      // b is removed while it is still moving.
+      controller.updateMarkers({_marker(_a, const LatLng(0, 0))});
       expect(platform.markers.keys, containsAll([_a, _b]));
 
-      await tester.pump(const Duration(seconds: 2));
+      await _pumpFor(tester, const Duration(seconds: 2));
+      expect(platform.markers.keys, [_a]);
+      controller.dispose();
+    });
+
+    testWidgets('a marker that is not moving is removed at once', (
+      tester,
+    ) async {
+      final controller = create(
+        tester,
+        markers: {
+          _marker(_a, const LatLng(0, 0)),
+          _marker(_b, const LatLng(1, 1)),
+        },
+      );
+
+      controller.updateMarkers({_marker(_a, const LatLng(0, 1))});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
       expect(platform.markers.keys, [_a]);
       controller.dispose();
     });

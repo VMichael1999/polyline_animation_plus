@@ -166,6 +166,27 @@ mapAnimationController.updateMarkers({
 - Positions that arrive while a marker is still moving wait in a queue and are played in order.
 - A marker that does not move keeps its rotation. Set `useMarkerRotation: true` to use `Marker.rotation` instead of the heading between positions.
 
+### Live tracking: do not fall behind the GPS
+
+By default every position is played in order. If the GPS sends a position every second but each move lasts 2 seconds, the marker falls further and further behind. For live tracking use `latestOnly`: the marker goes straight to the newest position, starting from where it is shown at that moment.
+
+```dart
+mapAnimationController = MapAnimationController(
+  mapId: controller.mapId,
+  vsync: this,
+  markerAnimationMode: MarkerAnimationMode.latestOnly,
+  // Each move lasts as long as the time between positions, up to 2 seconds.
+  markerDuration: const MarkerDuration.adaptive(max: Duration(seconds: 2)),
+);
+```
+
+| Option | Values | Default |
+| --- | --- | --- |
+| `markerAnimationMode` | `queue` plays every position in order. `latestOnly` skips to the newest one. | `queue` |
+| `markerDuration` | `MarkerDuration.fixed(d)` always lasts `d`. `MarkerDuration.adaptive(max: d)` follows the time between positions, between 100 ms and `d`. | `fixed`, from `markersAnimationDuration` (2 seconds) |
+
+Every marker moves on its own clock, so a slow marker does not hold back the others.
+
 ## Important: do not reuse IDs in `GoogleMap`
 
 The controller draws directly on the map, using the `mapId`. If the `GoogleMap` widget also receives a polyline or marker with the same ID in its `polylines` or `markers`, the widget overwrites what the controller draws. Give the controller its own IDs and leave them out of the widget's sets.

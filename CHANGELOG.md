@@ -1,3 +1,20 @@
+## 1.2.0 (unreleased)
+
+### Breaking behavior
+
+- Every marker now moves on its own clock. Before, all markers moved in synchronized rounds, so a marker with several waiting positions held back the rest. Markers also play their waiting positions without waiting for the others.
+- A marker that is removed waits for the end of its own moves, not for the moves of every marker. A marker that is not moving is removed at once.
+- A change to a marker that does not move it (for example its alpha or icon) is applied right away instead of running a move of the full duration.
+
+### New
+
+- `MapAnimationController.markerAnimationMode`: `MarkerAnimationMode.queue` (default, as before) or `MarkerAnimationMode.latestOnly`, which goes straight to the newest position from where the marker is shown and drops the ones in between.
+- `MapAnimationController.markerDuration`: `MarkerDuration.fixed(duration)` or `MarkerDuration.adaptive(max: duration)`, where each move lasts as long as the time between positions. `markersAnimationDuration` still works and is a shortcut for `fixed`.
+
+### Other
+
+- All markers share one ticker and the changes of a frame go to the map together. With 50 markers it is one map call per frame, as before, at about 170 µs per frame in the test harness.
+
 ## 1.1.0
 
 ### Breaking behavior

@@ -23,11 +23,4 @@ class LocationTween extends Tween<LatLng> {
   LatLng lerp(double t) {
     return SphericalUtil.interpolate(begin, end, t);
   }
-
-  void swap(LatLng newPosition) {
-    begin = end;
-    end = newPosition;
-  }
-
-  double get bearing => SphericalUtil.computeHeading(begin, end).toDouble();
 }
