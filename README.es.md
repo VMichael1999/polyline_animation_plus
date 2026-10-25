@@ -224,6 +224,44 @@ mapAnimationController.stopTrackingVehicle(const MarkerId('driver'));
 - Con varios vehículos, pasa el `markerId` a `updateVehicle`.
 - Combínalo con `markerAnimationMode: MarkerAnimationMode.latestOnly` para seguimiento en vivo.
 
+## Controla una animación en marcha
+
+Pídele al controlador el handle de una polyline para pausarla, llevarla a un punto o seguir su progreso.
+
+```dart
+final animacion = mapAnimationController
+    .polylineAnimation(const PolylineId('front'));
+
+animacion?.pause();
+animacion?.seek(0.5);   // salta a la mitad del ciclo
+animacion?.resume();
+
+animacion?.progress.listen((p) => print(p)); // de 0.0 a 1.0
+animacion?.onComplete = () => mostrarLlegada();
+animacion?.onCycle = (ciclo) => print('terminó la pasada $ciclo');
+```
+
+- `polylineAnimation` devuelve `null` si ese ID no tiene animación.
+- El progreso es la posición dentro de un ciclo, en tiempo: incluye `delayStart` y `delayEnd` y se mide antes de la curva.
+- `seek` sobre una animación en marcha la mantiene corriendo desde ahí. En una pausada o terminada se queda quieta hasta `resume`.
+- `onComplete` no se llama en una animación que se repite para siempre, porque nunca termina. Para esas usa `onCycle`. Con `reverse`, ir y volver cuentan como una pasada cada uno, igual que en `repeatCount`.
+- El handle deja de funcionar cuando se quita la polyline, se reemplaza su animator o se hace `dispose` del controlador.
+
+## Utilidades
+
+```dart
+// Decodifica la ruta de una respuesta de Directions y ajusta la cámara.
+final ruta = PolylineCodec.decode(respuesta.overviewPolyline);
+controller.animateCamera(
+  CameraUpdate.newLatLngBounds(MapAnimationUtils.boundsOf(ruta), 50),
+);
+
+// Y de vuelta a texto, con 5 decimales (por defecto) o 6.
+final texto = PolylineCodec.encode(ruta, precision: 6);
+```
+
+`PolylineCodec` lee y escribe el [formato de polyline codificada](https://developers.google.com/maps/documentation/utilities/polylinealgorithm). `boundsOf` no maneja rutas que cruzan el meridiano 180.
+
 ## Importante: no repitas IDs en `GoogleMap`
 
 El controlador dibuja directamente sobre el mapa usando el `mapId`. Si el widget `GoogleMap` también recibe una polyline o un marcador con el mismo ID en sus `polylines` o `markers`, el widget sobrescribe lo que dibuja el controlador. Dale al controlador sus propios IDs y no los incluyas en los conjuntos del widget.

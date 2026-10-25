@@ -9,6 +9,7 @@ import '../managers/animated_marker_manager.dart';
 import '../managers/animated_polyline_manager.dart';
 import '../model/animated_polyline.dart';
 import '../model/marker_animation.dart';
+import '../model/polyline_animation_handle.dart';
 import '../model/vehicle_tracking.dart';
 import 'marker_controller.dart';
 import 'tracked_vehicle.dart';
@@ -354,6 +355,14 @@ final class MapAnimationController {
     }
     _updatePolylinesOnMap(previous, _polylines.values.toSet());
   }
+
+  /// The handle to pause, resume, seek and follow the animation of a polyline,
+  /// or `null` if that polyline is not being animated.
+  ///
+  /// The handle stops working if the animator of the polyline is replaced, the
+  /// polyline is removed or the controller is disposed.
+  PolylineAnimationHandle? polylineAnimation(PolylineId polylineId) =>
+      _animatedPolylineManager.handleFor(polylineId);
 
   /// Update Polyline directly on the map
   /// This method is used to update a static polyline that does not have an animator.

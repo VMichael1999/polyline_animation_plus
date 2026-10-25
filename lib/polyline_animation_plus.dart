@@ -5,5 +5,7 @@ export 'src/animator/snack_animator.dart';
 export 'src/controllers/map_animation_controller.dart';
 export 'src/model/animated_polyline.dart';
 export 'src/model/marker_animation.dart';
+export 'src/model/polyline_animation_handle.dart';
 export 'src/model/vehicle_tracking.dart';
+export 'src/utils/polyline_codec.dart';
 export 'src/utils/util.dart';

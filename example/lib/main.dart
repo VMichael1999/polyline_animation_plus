@@ -31,26 +31,6 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
-  LatLngBounds _getBounds(List<LatLng> points) {
-    double? minLat, maxLat, minLng, maxLng;
-
-    for (final p in points) {
-      if (minLat == null) {
-        minLat = maxLat = p.latitude;
-        minLng = maxLng = p.longitude;
-      } else {
-        if (p.latitude < minLat) minLat = p.latitude;
-        if (p.latitude > maxLat!) maxLat = p.latitude;
-        if (p.longitude < minLng!) minLng = p.longitude;
-        if (p.longitude > maxLng!) maxLng = p.longitude;
-      }
-    }
-
-    return LatLngBounds(
-      southwest: LatLng(minLat!, minLng!),
-      northeast: LatLng(maxLat!, maxLng!),
-    );
-  }
   GoogleMapController? mapController;
   MapAnimationController? mapAnimationController;
 
@@ -115,10 +95,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             polylines: _polylines,
           );
           // Move camera to show the whole polyline
-          final bounds = _getBounds(coordinates1);
-          controller.animateCamera(
-            CameraUpdate.newLatLngBounds(bounds, 50),
-          );
+          final bounds = MapAnimationUtils.boundsOf(coordinates1);
+          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
         },
       ),
     );
