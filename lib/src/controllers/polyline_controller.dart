@@ -49,6 +49,17 @@ class PolylineAnimationController implements PolylineAnimationBackend {
   int _reportedPasses = 0;
 
   _State _state = _State.playing;
+
+  /// What the app asked for with pause() and resume(). The animation also
+  /// stays still while the app is in the background or the user asked the
+  /// system to reduce motion, and picks up again afterwards if this is true.
+  bool _wantsToPlay = true;
+  bool _inBackground = false;
+
+  /// Whether the user asked the system to reduce motion: nothing runs and the
+  /// polyline is drawn as it is.
+  bool _reducedMotion = false;
+
   bool _changingValue = false;
   bool _disposed = false;
 
@@ -61,7 +72,9 @@ class PolylineAnimationController implements PolylineAnimationBackend {
     required Polyline polyline,
     required this.polylineAnimator,
     required this.polylinesListener,
-  }) : _polyline = polyline {
+    bool reducedMotion = false,
+  })  : _polyline = polyline,
+        _reducedMotion = reducedMotion {
     _initialize();
   }
 
@@ -95,6 +108,11 @@ class PolylineAnimationController implements PolylineAnimationBackend {
     }
 
     _passes = polylineAnimator.repeat ? polylineAnimator.repeatCount : 1;
+    if (_reducedMotion) {
+      _state = _State.paused;
+      _drawReducedMotion();
+      return;
+    }
     _play(0);
 
     // An animation without duration is already at its end: draw it now instead
@@ -135,8 +153,54 @@ class PolylineAnimationController implements PolylineAnimationBackend {
 
   void updatePolyline(Polyline polyline) {
     _polyline = polyline;
-    // Nothing is running to redraw it when there is no duration.
-    if (_periodSeconds <= 0) _listener();
+    // Nothing is running to redraw it when there is no duration or motion.
+    if (_reducedMotion) {
+      _drawReducedMotion();
+    } else if (_periodSeconds <= 0) {
+      _listener();
+    }
+  }
+
+  void _drawReducedMotion() => polylinesListener(
+        _polyline.polylineId,
+        polylineAnimator.reducedMotionFrame(_polyline),
+      );
+
+  /// Plays or stops the animation to match what it should be doing now.
+  void _sync() {
+    if (_disposed || _state == _State.finished) return;
+
+    final shouldRun = _wantsToPlay && !_inBackground && !_reducedMotion;
+    if (shouldRun && _state == _State.paused) {
+      _play(_frozenTime);
+    } else if (!shouldRun && _state == _State.playing) {
+      _frozenTime = _timeNow;
+      _controller.stop();
+      _state = _State.paused;
+    }
+  }
+
+  /// The app went to the background (true) or came back (false). The animation
+  /// keeps its place and goes on when the app returns, unless the user paused
+  /// it.
+  void setInBackground(bool inBackground) {
+    if (_inBackground == inBackground) return;
+    _inBackground = inBackground;
+    _sync();
+  }
+
+  /// The system started (true) or stopped (false) asking to reduce motion.
+  /// While it does, the polyline is drawn as it is and nothing moves.
+  void setReducedMotion(bool reduced) {
+    if (_disposed || _reducedMotion == reduced) return;
+    _reducedMotion = reduced;
+
+    if (reduced) {
+      _sync();
+      _drawReducedMotion();
+    } else {
+      _sync();
+    }
   }
 
   void _listener() {
@@ -185,16 +249,16 @@ class PolylineAnimationController implements PolylineAnimationBackend {
 
   @override
   void pause() {
-    if (_disposed || _state != _State.playing) return;
-    _frozenTime = _timeNow;
-    _controller.stop();
-    _state = _State.paused;
+    if (_disposed) return;
+    _wantsToPlay = false;
+    _sync();
   }
 
   @override
   void resume() {
-    if (_disposed || _state != _State.paused) return;
-    _play(_frozenTime);
+    if (_disposed || _state == _State.finished) return;
+    _wantsToPlay = true;
+    _sync();
   }
 
   @override
@@ -221,6 +285,8 @@ class PolylineAnimationController implements PolylineAnimationBackend {
     if (wasPlaying) {
       _play(_frozenTime);
     } else {
+      // A finished animation that is sought stays where it is until resumed.
+      if (_state == _State.finished) _wantsToPlay = false;
       _state = _State.paused;
     }
   }

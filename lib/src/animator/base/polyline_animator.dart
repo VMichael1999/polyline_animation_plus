@@ -64,6 +64,14 @@ abstract class PolylineAnimator {
         animate(polyline, progress),
       ];
 
+  /// The polylines to draw when the animation cannot run because the user asked
+  /// the system to reduce motion.
+  ///
+  /// By default it is the polyline as it is, without animating it. Override it
+  /// when the polyline alone is not what should be shown, for example for an
+  /// animation made of several polylines.
+  List<Polyline> reducedMotionFrame(Polyline polyline) => [polyline];
+
   /// Called once when the animation reaches its end.
   ///
   /// It is not called when the animation is disposed or removed before it

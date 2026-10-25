@@ -24,6 +24,7 @@ class AnimatedMarkersManager {
     this.useMarkerRotation = false,
     this.mode = MarkerAnimationMode.queue,
     this.duration = const MarkerDuration.fixed(Duration(seconds: 2)),
+    this.reducedMotion = false,
     Duration Function()? clock,
   }) : _clock = clock ?? _stopwatchClock() {
     _ticker = vsync.createTicker(_onTick);
@@ -42,6 +43,9 @@ class AnimatedMarkersManager {
   final bool useMarkerRotation;
   final MarkerAnimationMode mode;
   final MarkerDuration duration;
+
+  /// When true the markers go to their new position at once.
+  bool reducedMotion;
 
   final ValueChanged<Set<Marker>> onUpdateMarkers;
   final ValueChanged<Set<MarkerId>> onRemoveMarkers;
@@ -91,6 +95,7 @@ class AnimatedMarkersManager {
         timeline: _timeline,
         wallClock: _clock(),
         route: routes[marker.markerId],
+        instant: reducedMotion,
       );
       if (immediate != null) _pending[marker.markerId] = immediate;
     }

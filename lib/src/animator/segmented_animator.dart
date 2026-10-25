@@ -41,6 +41,10 @@ class SegmentedAnimator extends PolylineAnimator {
   void onAnimationStop() => inner?.onAnimationStop();
 
   @override
+  List<Polyline> reducedMotionFrame(Polyline polyline) =>
+      SegmentedAnimator(segments: segments).animateAll(polyline, 1);
+
+  @override
   List<Polyline> animateAll(Polyline polyline, double progress) {
     final visible = animate(polyline, progress);
     final path = RoutePath.of(polyline.points);

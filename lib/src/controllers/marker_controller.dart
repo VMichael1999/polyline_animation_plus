@@ -89,13 +89,15 @@ class MarkerController {
   ///
   /// [timeline] is the animation time, [wallClock] a real clock used to measure
   /// the time between positions. With [route] the marker follows the route up
-  /// to that distance instead of going in a straight line. Returns the marker
+  /// to that distance instead of going in a straight line. With [instant] the
+  /// marker goes there at once. Returns the marker
   /// to show right now when the change needs no animation, otherwise `null`.
   Marker? push(
     Marker marker, {
     required Duration timeline,
     required Duration wallClock,
     RouteTarget? route,
+    bool instant = false,
   }) {
     final RouteTarget? latestRoute;
     final Marker latest;
@@ -110,9 +112,9 @@ class MarkerController {
         route == null ? latestRoute == null : route.sameAs(latestRoute);
     if (latest == marker && sameRoute) return null;
 
-    final length = duration.resolve(
-      _lastPush == null ? null : wallClock - _lastPush!,
-    );
+    final length = instant
+        ? Duration.zero
+        : duration.resolve(_lastPush == null ? null : wallClock - _lastPush!);
     _lastPush = wallClock;
 
     if (mode == MarkerAnimationMode.latestOnly) {

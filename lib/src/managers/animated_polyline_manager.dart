@@ -29,8 +29,13 @@ class AnimatedPolylineManager {
     required TickerProvider vsync,
     required void Function(PolylineId owner, List<Polyline> polylines)
         polylinesListener,
+    bool reducedMotion = false,
   })  : _vsync = vsync,
-        _listener = polylinesListener;
+        _listener = polylinesListener,
+        _reducedMotion = reducedMotion;
+
+  bool _reducedMotion;
+  bool _inBackground = false;
 
   List<PolylineId> get activePolylineIds => _controllers.keys.toList();
 
@@ -44,7 +49,8 @@ class AnimatedPolylineManager {
           polylinesListener: _listener,
           polylineAnimator: polylineAnimator,
           polyline: polyline,
-        );
+          reducedMotion: _reducedMotion,
+        )..setInBackground(_inBackground);
 
     final controller = _controllers[polyline.polylineId];
 
@@ -57,6 +63,23 @@ class AnimatedPolylineManager {
       }
     } else {
       _controllers[polyline.polylineId] = createController();
+    }
+  }
+
+  /// The app went to the background or came back: the animations keep their
+  /// place and go on when it returns.
+  void setInBackground(bool inBackground) {
+    _inBackground = inBackground;
+    for (final controller in _controllers.values) {
+      controller.setInBackground(inBackground);
+    }
+  }
+
+  /// The system started or stopped asking to reduce motion.
+  void setReducedMotion(bool reduced) {
+    _reducedMotion = reduced;
+    for (final controller in _controllers.values) {
+      controller.setReducedMotion(reduced);
     }
   }
 

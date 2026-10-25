@@ -11,8 +11,8 @@ const _extraId = PolylineId('p#extra');
 /// Draws the polyline and an extra one on top, except in the second half of
 /// the cycle when it draws only the polyline.
 class _WithExtra extends PolylineAnimator {
-  const _WithExtra({super.duration = const Duration(seconds: 2)})
-      : super(repeat: true);
+  const _WithExtra()
+      : super(duration: const Duration(seconds: 2), repeat: true);
 
   @override
   Polyline animate(Polyline polyline, double progress) => polyline;

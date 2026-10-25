@@ -13,6 +13,7 @@ import '../model/marker_animation.dart';
 import '../model/polyline_animation_handle.dart';
 import '../model/vehicle_tracking.dart';
 import 'camera_follower.dart';
+import 'system_observer.dart';
 import 'marker_controller.dart';
 import 'tracked_vehicle.dart';
 import 'vehicle_tracker.dart';
@@ -55,6 +56,20 @@ final class MapAnimationController {
   /// between positions, which suits live GPS updates.
   final MarkerDuration? markerDuration;
 
+  /// Whether the polyline animations pause when the app goes to the background
+  /// and go on from the same place when it comes back. Default is true.
+  ///
+  /// An animation that the app paused with its handle stays paused. Marker
+  /// moves are not paused: they have to show the latest positions.
+  final bool pauseInBackground;
+
+  /// Whether to follow the system setting to reduce motion. Default is true.
+  ///
+  /// When the user asks for it (`MediaQuery.disableAnimations`), polylines are
+  /// drawn as they are, without animating, and markers go to their new
+  /// positions at once.
+  final bool respectReduceMotion;
+
   /// What a marker does when a new position arrives while it is still moving.
   /// Default is [MarkerAnimationMode.queue].
   final MarkerAnimationMode markerAnimationMode;
@@ -73,8 +88,18 @@ final class MapAnimationController {
     this.useMarkerRotation = false,
     this.markerDuration,
     this.markerAnimationMode = MarkerAnimationMode.queue,
+    this.pauseInBackground = true,
+    this.respectReduceMotion = true,
   }) {
     _initialize(markers, polylines);
+  }
+
+  late final SystemObserver _observer;
+
+  void _applyReduceMotion(bool reduce) {
+    if (!respectReduceMotion) return;
+    _animatedMarkersManager.reducedMotion = reduce;
+    _animatedPolylineManager.setReducedMotion(reduce);
   }
 
   /// Manager responsible for animating marker transitions
@@ -96,6 +121,17 @@ final class MapAnimationController {
   final Map<PolylineId, Polyline> _polylines = {};
 
   void _initialize(Set<Marker> markers, Set<AnimatedPolyline> polylines) {
+    _observer = SystemObserver(
+      onBackground: () {
+        if (pauseInBackground) _animatedPolylineManager.setInBackground(true);
+      },
+      onForeground: () {
+        if (pauseInBackground) _animatedPolylineManager.setInBackground(false);
+      },
+      onReduceMotionChanged: _applyReduceMotion,
+    )..attach();
+    final reduceMotion = respectReduceMotion && _observer.reduceMotion;
+
     // The initial markers are drawn directly on the map; the manager only
     // needs to know them so that later updates can move them.
 
@@ -113,6 +149,7 @@ final class MapAnimationController {
       onUpdateMarkers: _updateMarker,
       onRemoveMarkers: _removeMarker,
       useMarkerRotation: useMarkerRotation,
+      reducedMotion: reduceMotion,
     );
 
     _animatedMarkersManager.push(markerSet);
@@ -123,6 +160,7 @@ final class MapAnimationController {
     _animatedPolylineManager = AnimatedPolylineManager(
       vsync: vsync,
       polylinesListener: _updateAnimated,
+      reducedMotion: reduceMotion,
     );
 
     // Add all polylines to animate
@@ -299,6 +337,7 @@ final class MapAnimationController {
   void stopFollowingCamera() {
     _camera?.dispose();
     _camera = null;
+    _observer.detach();
   }
 
   /// Tells the controller that the camera of the map started to move, to stop
