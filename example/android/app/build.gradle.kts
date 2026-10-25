@@ -23,6 +23,15 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // The Google Maps key comes from android/secrets.properties, which git
+        // ignores. Without it the app still builds, but the map stays blank.
+        val secrets = java.util.Properties()
+        val secretsFile = rootProject.file("secrets.properties")
+        if (secretsFile.exists()) {
+            secretsFile.inputStream().use { secrets.load(it) }
+        }
+        manifestPlaceholders["MAPS_API_KEY"] = secrets.getProperty("MAPS_API_KEY", "")
     }
 
     buildTypes {
