@@ -15,6 +15,10 @@ class ColorTransitionAnimation extends PolylineAnimator {
     super.duration = const Duration(seconds: 5),
     super.curve = Curves.linear,
     super.repeat = false,
+    super.repeatCount,
+    super.reverse,
+    super.delayStart,
+    super.delayEnd,
   });
 
   @override

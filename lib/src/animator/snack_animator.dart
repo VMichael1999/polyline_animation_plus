@@ -13,6 +13,8 @@ class SnackAnimator extends PolylineAnimator {
     super.repeat = false,
     super.repeatCount,
     super.reverse = false,
+    super.delayStart,
+    super.delayEnd,
   });
 
   @override
