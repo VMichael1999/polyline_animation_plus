@@ -187,6 +187,43 @@ mapAnimationController = MapAnimationController(
 
 Cada marcador se mueve con su propio reloj, así que uno lento no frena a los demás.
 
+## Sigue a un vehículo por una ruta
+
+Para un viaje o una entrega ya tienes la ruta. Pásasela al controlador junto con el marcador del vehículo y envía cada posición del GPS a `updateVehicle`. La posición se ajusta a la ruta, así el marcador no se sale de la calle, y la ruta se dibuja como la parte ya recorrida y la parte que falta.
+
+```dart
+mapAnimationController.trackVehicle(
+  VehicleTracking(
+    markerId: const MarkerId('driver'),
+    route: puntosDeLaRuta, // por ejemplo, decodificados de una respuesta de Directions
+    traveled: const RouteStyle(color: Colors.grey),
+    remaining: const RouteStyle(color: Colors.blue, width: 6),
+    snapToleranceMeters: 30,
+    followRoute: true,
+    onOffRoute: (posicion) => pedirNuevaRuta(posicion),
+  ),
+);
+
+// En cada actualización del GPS:
+mapAnimationController.updateVehicle(posicion);
+
+// Cuando termina el viaje:
+mapAnimationController.stopTrackingVehicle(const MarkerId('driver'));
+```
+
+| Opción | Qué hace | Por defecto |
+| --- | --- | --- |
+| `snapToleranceMeters` | Qué tan lejos de la ruta puede estar una posición y aun así ajustarse a ella. | 30 |
+| `followRoute` | El marcador toma la ruta entre dos posiciones y gira en las esquinas, en lugar de ir en línea recta. | `false` |
+| `consumeRoute` | Dibuja la parte recorrida con `traveled` (o la oculta con `visible: false`) y el resto con `remaining`. Con `false`, toda la ruta conserva el estilo `remaining`. | `true` |
+| `onOffRoute` | Se llama con una posición más lejos que la tolerancia. El marcador va a esa posición tal cual y se conserva el avance en la ruta. | ninguno |
+
+- El marcador se crea al inicio de la ruta si no existe. Mientras el vehículo está en seguimiento, `updateMarkers` no lo mueve ni lo elimina.
+- Las dos líneas son polylines con los IDs `<markerId>#traveled` y `<markerId>#remaining`. No uses esos IDs para otras polylines.
+- La búsqueda de la posición empieza cerca de la última conocida, así que una ruta que se cruza a sí misma, o una calle paralela, no hace saltar al vehículo. Si no hay nada cerca, se busca en toda la ruta.
+- Con varios vehículos, pasa el `markerId` a `updateVehicle`.
+- Combínalo con `markerAnimationMode: MarkerAnimationMode.latestOnly` para seguimiento en vivo.
+
 ## Importante: no repitas IDs en `GoogleMap`
 
 El controlador dibuja directamente sobre el mapa usando el `mapId`. Si el widget `GoogleMap` también recibe una polyline o un marcador con el mismo ID en sus `polylines` o `markers`, el widget sobrescribe lo que dibuja el controlador. Dale al controlador sus propios IDs y no los incluyas en los conjuntos del widget.
