@@ -53,16 +53,21 @@ abstract class PolylineAnimator {
         curve == other.curve &&
         repeat == other.repeat &&
         repeatCount == other.repeatCount &&
-        reverse == other.reverse;
+        reverse == other.reverse &&
+        delayStart == other.delayStart &&
+        delayEnd == other.delayEnd;
   }
 
   @override
-  int get hashCode =>
-      duration.hashCode ^
-      curve.hashCode ^
-      repeat.hashCode ^
-      (repeatCount?.hashCode ?? 0) ^
-      reverse.hashCode;
+  int get hashCode => Object.hash(
+    duration,
+    curve,
+    repeat,
+    repeatCount,
+    reverse,
+    delayStart,
+    delayEnd,
+  );
 
   @override
   String toString() {
