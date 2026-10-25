@@ -1,11 +1,13 @@
 # polyline_animation_plus
 
+> Fork of [google_map_animation](https://github.com/manishrelani/google_map_animation) by Manish Relani (BSD-3-Clause). See [License](#-license).
+
 A Flutter package for creating smooth, customizable polyline animations on Google Maps. Ideal for apps in transportation, delivery, logistics, tracking, or any project that needs animated route visualizations.
 
 ## 🎥 Demo
 
 <p align="center">
-<img src="doc/demo.gif" width="30%" alt="Floating Bubble Overlay Demo" />
+<img src="doc/demo.gif" width="30%" alt="Animated polyline drawing on Google Maps" />
 <br>
 This animation represents how the plugin behaves
 </p>
@@ -99,15 +101,15 @@ More complete examples can be found in the `/example` folder.
 ## 📚 Additional Information
 
 - Issues and feature requests: **GitHub Issues**
-- Repository: https://github.com/MICHAELVM01/polyline_animation_plus
+- Repository: https://github.com/VMichael1999/polyline_animation_plus
 - Contributions are welcome! Submit PRs to improve animations or extend support.
-- This package is developed by **ToolRides** for advanced route visualizations in transportation and mobility apps.
+- Based on [google_map_animation](https://github.com/manishrelani/google_map_animation) by Manish Relani.
 
 ## 👤 Author / Developer
 
 **Michael Anthony Valdiviezo Maza**
 
-Flutter & Mobile Developer focused on mobility, ride‑hailing, logistics and real‑time map experiences. Creator of ToolRides solutions and open‑source packages for advanced transportation interfaces.
+Flutter & Mobile Developer focused on mobility, ride‑hailing, logistics and real‑time map experiences. Maintainer of this fork, which builds on the original work of Manish Relani.
 
 **Areas of focus**
 - Google Maps & geolocation (polylines, tracking, animations)
@@ -116,7 +118,7 @@ Flutter & Mobile Developer focused on mobility, ride‑hailing, logistics and re
 - White‑label transportation platforms (B2B & B2C)
 
 **Connect**
-- GitHub: https://github.com/MICHAELVM01
+- GitHub: https://github.com/VMichael1999
 
 If you use this package in your project, feel free to open an issue or PR — contributions and ideas are welcome.
 
@@ -125,4 +127,6 @@ If you use this package in your project, feel free to open an issue or PR — co
 
 ## 📄 License
 
-MIT License — feel free to use it in commercial and open‑source projects.
+BSD 3-Clause. The original code is © 2025 Manish Relani ([google_map_animation](https://github.com/manishrelani/google_map_animation)); changes in this fork are © 2025 Michael Anthony Valdiviezo Maza. Both notices are in [LICENSE](LICENSE) and must be kept in copies.
+
+Fork additions: see [CHANGELOG](CHANGELOG.md).

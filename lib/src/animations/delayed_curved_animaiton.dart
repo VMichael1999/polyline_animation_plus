@@ -1,3 +1,7 @@
+// Based on google_map_animation by Manish Relani (BSD-3-Clause).
+// https://github.com/manishrelani/google_map_animation
+// See LICENSE for the original notice and the changes made in this fork.
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
