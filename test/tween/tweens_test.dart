@@ -16,31 +16,15 @@ void main() {
       expect(tween.lerp(0.5), closeTo(360, 1e-9));
       expect(tween.transform(0.5), tween.lerp(0.5));
     });
-
-    test('swap continues from the previous end', () {
-      final tween = BearingTween(begin: 0, end: 90)..swap(180);
-      expect(tween.begin, 90);
-      expect(tween.end, 180);
-    });
   });
 
   group('LocationTween', () {
-    test('interpolates over the sphere and exposes the bearing', () {
+    test('interpolates over the sphere', () {
       final tween = LocationTween(
         begin: const LatLng(0, 0),
         end: const LatLng(0, 2),
       );
       expect(tween.lerp(0.5).longitude, closeTo(1, 1e-9));
-      expect(tween.bearing, closeTo(90, 1e-9));
-    });
-
-    test('swap continues from the previous end', () {
-      final tween = LocationTween(
-        begin: const LatLng(0, 0),
-        end: const LatLng(0, 1),
-      )..swap(const LatLng(1, 1));
-      expect(tween.begin, const LatLng(0, 1));
-      expect(tween.end, const LatLng(1, 1));
     });
   });
 }

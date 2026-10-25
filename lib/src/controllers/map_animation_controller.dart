@@ -8,6 +8,7 @@ import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platf
 import '../managers/animated_marker_manager.dart';
 import '../managers/animated_polyline_manager.dart';
 import '../model/animated_polyline.dart';
+import '../model/marker_animation.dart';
 
 /// Called with the polyline that was just drawn on the map.
 typedef PolylineListener = void Function(Polyline);
@@ -35,8 +36,21 @@ final class MapAnimationController {
   /// heading between consecutive positions. Default is false.
   final bool useMarkerRotation;
 
-  /// Duration for marker animation transitions. Default is 2 second.
+  /// Duration of each marker move. Default is 2 seconds.
+  ///
+  /// It is a shortcut for `markerDuration: MarkerDuration.fixed(...)` and is
+  /// ignored when [markerDuration] is given.
   final Duration markersAnimationDuration;
+
+  /// How long each marker move lasts. Overrides [markersAnimationDuration].
+  ///
+  /// Use [MarkerDuration.adaptive] to make every move last as long as the time
+  /// between positions, which suits live GPS updates.
+  final MarkerDuration? markerDuration;
+
+  /// What a marker does when a new position arrives while it is still moving.
+  /// Default is [MarkerAnimationMode.queue].
+  final MarkerAnimationMode markerAnimationMode;
 
   /// Creates a controller and immediately draws [markers] and [polylines].
   ///
@@ -50,6 +64,8 @@ final class MapAnimationController {
     this.markersAnimationDuration = const Duration(milliseconds: 2000),
     this.markerListener,
     this.useMarkerRotation = false,
+    this.markerDuration,
+    this.markerAnimationMode = MarkerAnimationMode.queue,
   }) {
     _initialize(markers, polylines);
   }
@@ -65,9 +81,8 @@ final class MapAnimationController {
   final Map<PolylineId, Polyline> _polylines = {};
 
   void _initialize(Set<Marker> markers, Set<AnimatedPolyline> polylines) {
-    // Initialize markers from widget properties
-    // update directly to the map
-    // newly added markers wont be updated if manager is not animating markers
+    // The initial markers are drawn directly on the map; the manager only
+    // needs to know them so that later updates can move them.
 
     _markers.addAll(keyByMarkerId(markers));
     final markerSet = _markers.values.toSet();
@@ -77,7 +92,9 @@ final class MapAnimationController {
     // Set up the markers animation manager
     _animatedMarkersManager = AnimatedMarkersManager(
       vsync: vsync,
-      duration: markersAnimationDuration,
+      mode: markerAnimationMode,
+      duration:
+          markerDuration ?? MarkerDuration.fixed(markersAnimationDuration),
       onUpdateMarkers: _updateMarker,
       onRemoveMarkers: _removeMarker,
       useMarkerRotation: useMarkerRotation,
@@ -133,15 +150,10 @@ final class MapAnimationController {
       }
     }
 
-    // Handle added markers - if not currently animating, update immediately
-    // If the marker is already being animated, it will be updated by the animation manager
-    // otherwise update directly to the map
-    // newly added markers wont be updated if manager is not animating the markers
-    // This is to ensure that the markers are updated on the map imediately
+    // New markers are drawn where they are, without animation. The manager
+    // only moves markers it already knows.
     if (addedIds.isNotEmpty) {
-      if (!_animatedMarkersManager.isAnimating) {
-        _updateMarker({for (final id in addedIds) newMarkersById[id]!});
-      }
+      _updateMarker({for (final id in addedIds) newMarkersById[id]!});
     }
 
     // Push all new markers to the animation manager
