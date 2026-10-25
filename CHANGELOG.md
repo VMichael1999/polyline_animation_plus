@@ -1,10 +1,15 @@
-## 1.3.0 (unreleased)
+## 1.3.0
+
+This version also contains everything that was planned for 1.2.0, which was not published on its own.
 
 ### Breaking behavior
 
 - `followRoute` rounds the corners when the marker turns (`turnSmoothingMeters`, 0 to turn at once), and `CameraFollow` turns the map with a lag (`bearingLag`, `Duration.zero` to turn at once).
 - Polyline animations now pause when the app goes to the background and go on from the same place when it returns. Use `pauseInBackground: false` on `MapAnimationController` to keep the old behavior.
 - When the system asks to reduce motion, polylines are drawn as they are and markers move at once. Use `respectReduceMotion: false` to keep animating.
+- Every marker now moves on its own clock. Before, all markers moved in synchronized rounds, so a marker with several waiting positions held back the rest. Markers also play their waiting positions without waiting for the others.
+- A marker that is removed waits for the end of its own moves, not for the moves of every marker. A marker that is not moving is removed at once.
+- A change to a marker that does not move it (for example its alpha or icon) is applied right away instead of running a move of the full duration.
 
 ### New
 
@@ -17,24 +22,8 @@
 - `MapAnimationController.followCamera(CameraFollow(...))`, `stopFollowingCamera()` and `onCameraMoveStarted()` to follow a marker with the camera and stop when the user moves the map.
 - `PolylineAnimator.animateAll` and `PolylineAnimator.reducedMotionFrame` for animations made of several polylines.
 - `MapAnimationController.pauseInBackground` and `respectReduceMotion`.
-
-### Other
-
-- An animation without duration is drawn at once and redrawn when its polyline changes.
-
-## 1.2.0 (unreleased)
-
-### Breaking behavior
-
-- Every marker now moves on its own clock. Before, all markers moved in synchronized rounds, so a marker with several waiting positions held back the rest. Markers also play their waiting positions without waiting for the others.
-- A marker that is removed waits for the end of its own moves, not for the moves of every marker. A marker that is not moving is removed at once.
-- A change to a marker that does not move it (for example its alpha or icon) is applied right away instead of running a move of the full duration.
-
-### New
-
 - `MapAnimationController.markerAnimationMode`: `MarkerAnimationMode.queue` (default, as before) or `MarkerAnimationMode.latestOnly`, which goes straight to the newest position from where the marker is shown and drops the ones in between.
 - `MapAnimationController.markerDuration`: `MarkerDuration.fixed(duration)` or `MarkerDuration.adaptive(max: duration)`, where each move lasts as long as the time between positions. `markersAnimationDuration` still works and is a shortcut for `fixed`.
-
 - Vehicle tracking: `MapAnimationController.trackVehicle(VehicleTracking(...))`, `updateVehicle(position)` and `stopTrackingVehicle(markerId)`. Positions are put on the route (searching around the last known distance first, so crossing routes and parallel streets do not cause jumps), the route is drawn as travelled and remaining (`RouteStyle`), `followRoute` makes the marker follow the route and turn at the corners, and `onOffRoute` reports positions beyond `snapToleranceMeters`.
 - Animation control: `MapAnimationController.polylineAnimation(id)` returns a `PolylineAnimationHandle` with `pause()`, `resume()`, `seek(progress)`, `isPlaying`, `isCompleted`, `value`, a `progress` stream, `onComplete` and `onCycle`.
 - `PolylineCodec.decode` and `PolylineCodec.encode` for the Google Encoded Polyline format, with precision 5 or 6.
@@ -42,6 +31,7 @@
 
 ### Other
 
+- An animation without duration is drawn at once and redrawn when its polyline changes.
 - Polyline animations now run on their own simulation, with the same timing as before, so they can be paused and resumed at any point.
 - All markers share one ticker and the changes of a frame go to the map together. With 50 markers it is one map call per frame, as before, at about 170 µs per frame in the test harness.
 
