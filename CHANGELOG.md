@@ -12,9 +12,13 @@
 - `MapAnimationController.markerDuration`: `MarkerDuration.fixed(duration)` or `MarkerDuration.adaptive(max: duration)`, where each move lasts as long as the time between positions. `markersAnimationDuration` still works and is a shortcut for `fixed`.
 
 - Vehicle tracking: `MapAnimationController.trackVehicle(VehicleTracking(...))`, `updateVehicle(position)` and `stopTrackingVehicle(markerId)`. Positions are put on the route (searching around the last known distance first, so crossing routes and parallel streets do not cause jumps), the route is drawn as travelled and remaining (`RouteStyle`), `followRoute` makes the marker follow the route and turn at the corners, and `onOffRoute` reports positions beyond `snapToleranceMeters`.
+- Animation control: `MapAnimationController.polylineAnimation(id)` returns a `PolylineAnimationHandle` with `pause()`, `resume()`, `seek(progress)`, `isPlaying`, `isCompleted`, `value`, a `progress` stream, `onComplete` and `onCycle`.
+- `PolylineCodec.decode` and `PolylineCodec.encode` for the Google Encoded Polyline format, with precision 5 or 6.
+- `MapAnimationUtils.boundsOf(points)`.
 
 ### Other
 
+- Polyline animations now run on their own simulation, with the same timing as before, so they can be paused and resumed at any point.
 - All markers share one ticker and the changes of a frame go to the map together. With 50 markers it is one map call per frame, as before, at about 170 µs per frame in the test harness.
 
 ## 1.1.0
