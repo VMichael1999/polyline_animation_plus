@@ -1,3 +1,23 @@
+## 1.3.0 (unreleased)
+
+### Breaking behavior
+
+- Polyline animations now pause when the app goes to the background and go on from the same place when it returns. Use `pauseInBackground: false` on `MapAnimationController` to keep the old behavior.
+- When the system asks to reduce motion, polylines are drawn as they are and markers move at once. Use `respectReduceMotion: false` to keep animating.
+
+### New
+
+- `PulseAnimator`: a light that travels along a dimmed copy of the route (extra polyline `<id>#glow`).
+- `DashFlowAnimator`: dashes that flow along the route. Its limitation (pattern in pixels, cut in meters) is documented.
+- `AnimatedPolyline.segmented` and `RouteSegment`: a route in several colors, with the animator applied to the whole route.
+- `MapAnimationController.followCamera(CameraFollow(...))`, `stopFollowingCamera()` and `onCameraMoveStarted()` to follow a marker with the camera and stop when the user moves the map.
+- `PolylineAnimator.animateAll` and `PolylineAnimator.reducedMotionFrame` for animations made of several polylines.
+- `MapAnimationController.pauseInBackground` and `respectReduceMotion`.
+
+### Other
+
+- An animation without duration is drawn at once and redrawn when its polyline changes.
+
 ## 1.2.0 (unreleased)
 
 ### Breaking behavior

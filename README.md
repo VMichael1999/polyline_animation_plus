@@ -118,6 +118,8 @@ All animators share these options: `duration`, `curve`, `repeat`, `repeatCount`,
 | `SnackAnimator` | Draws the line from start to end, then erases it in the same direction. |
 | `FadeInProgressiveAnimator` | Fades the line in during the first 30% and then erases it from the start. |
 | `ColorTransitionAnimation` | Changes the color smoothly through a list of `colors`. |
+| `PulseAnimator` | A light travels along a dimmed copy of the route, for a "looking for a driver" wait. It also draws a polyline with the ID `<id>#glow`. |
+| `DashFlowAnimator` | A dashed line whose dashes flow along the route. See its limitation below. |
 
 ## Create your own animator
 
@@ -223,6 +225,66 @@ mapAnimationController.stopTrackingVehicle(const MarkerId('driver'));
 - The search for the position starts near the last known one, so a route that crosses itself, or a parallel street, does not make the vehicle jump. If nothing is close, the whole route is searched.
 - With several vehicles, pass the `markerId` to `updateVehicle`.
 - Combine it with `markerAnimationMode: MarkerAnimationMode.latestOnly` for live tracking.
+
+### Dashes that flow: a limitation
+
+Google Maps cannot move the pattern of a dashed line, so `DashFlowAnimator` simulates it by cutting the start of the line a little more on every frame. `dash` and `gap` are drawn in logical pixels (what Google Maps patterns use), but the cut is measured in meters, so the loop is only smooth at the zoom level where one meter is about one pixel (around zoom 17). At other zoom levels the dashes may jump when the cycle restarts. It has not been checked that the pattern stays anchored to the first point on both Android and iOS.
+
+## Colors by section
+
+Draw a route in several colors, for example by traffic. Each segment is a fraction of the route by distance, and the animator is applied to the whole route as if it were one line.
+
+```dart
+AnimatedPolyline.segmented(
+  id: const PolylineId('route'),
+  points: routePoints,
+  segments: const [
+    RouteSegment(from: 0.00, to: 0.35, color: Color(0xFF1E9E5A)),
+    RouteSegment(from: 0.35, to: 0.60, color: Color(0xFFF2A900)),
+    RouteSegment(from: 0.60, to: 0.80, color: Color(0xFFE53935)),
+    RouteSegment(from: 0.80, to: 1.00, color: Color(0xFF1E9E5A)),
+  ],
+  polylineAnimator: const SnackAnimator(), // optional
+)
+```
+
+- Each segment is a polyline with the ID `<id>#<n>`; the ID itself is not drawn. Do not use those IDs for other polylines.
+- Consecutive segments share the point where they meet, so there is no gap. A part of the route that no segment covers is not drawn.
+- From the animator, only the part of the route it leaves visible, and its opacity for fades, are used. The colors come from the segments.
+
+## A camera that follows
+
+Make the camera follow a marker, for example the vehicle you are tracking:
+
+```dart
+mapAnimationController.followCamera(
+  CameraFollow(
+    markerId: const MarkerId('driver'),
+    zoom: 17,
+    tilt: 45,
+    bearing: CameraBearing.vehicle, // or CameraBearing.north
+    onFollowStopped: () => showRecenterButton(),
+  ),
+);
+
+mapAnimationController.stopFollowingCamera();
+```
+
+The camera is moved at most about ten times per second, and the last position is sent when the marker stops. **The package does not receive the gestures on the map by itself.** To stop following when the user moves the map, pass the controller's method to the widget:
+
+```dart
+GoogleMap(
+  onCameraMoveStarted: mapAnimationController.onCameraMoveStarted,
+  // ...
+)
+```
+
+The map also reports the moves the controller makes, so the ones that start right after one of its camera updates are ignored. The user is therefore noticed once the camera has stopped being moved for a moment, for example when the vehicle stops. It has not been checked on devices how each platform reports it.
+
+## Battery and accessibility
+
+- **Background.** By default (`pauseInBackground: true`) polyline animations stop when the app goes to the background and go on from the same place when it comes back. An animation you paused with its handle stays paused. Marker moves are not paused, because they have to show the latest positions.
+- **Reduce motion.** By default (`respectReduceMotion: true`) the controller follows the system setting. When the user asks to reduce motion, polylines are drawn as they are, without animating, and markers and vehicles go to their new position at once. Override `PolylineAnimator.reducedMotionFrame` if your own animation needs something different.
 
 ## Control a running animation
 
