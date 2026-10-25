@@ -83,6 +83,9 @@ class RoutePath {
 
   int get segments => points.length - 1;
 
+  /// Meters from the start of the route to its [index]th point.
+  double alongAtVertex(int index) => _cumulative[index];
+
   /// Index of the segment that contains [along] (clamped to the route).
   int segmentAt(double along) {
     if (along <= 0) return 0;

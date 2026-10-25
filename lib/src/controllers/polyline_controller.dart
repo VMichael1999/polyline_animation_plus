@@ -96,6 +96,10 @@ class PolylineAnimationController implements PolylineAnimationBackend {
 
     _passes = polylineAnimator.repeat ? polylineAnimator.repeatCount : 1;
     _play(0);
+
+    // An animation without duration is already at its end: draw it now instead
+    // of waiting for the first frame.
+    if (_periodSeconds <= 0) _listener();
   }
 
   /// Plays from [time] seconds of animation time.
@@ -131,6 +135,8 @@ class PolylineAnimationController implements PolylineAnimationBackend {
 
   void updatePolyline(Polyline polyline) {
     _polyline = polyline;
+    // Nothing is running to redraw it when there is no duration.
+    if (_periodSeconds <= 0) _listener();
   }
 
   void _listener() {
