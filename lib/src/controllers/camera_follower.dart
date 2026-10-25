@@ -2,6 +2,7 @@
 // ignore_for_file: public_member_api_docs
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
@@ -38,6 +39,9 @@ class CameraFollower {
 
   Duration? _lastMove;
   Marker? _latest;
+
+  /// The direction of the map. With a lag it follows the marker slowly.
+  double? _bearing;
   Timer? _trailing;
   bool _disposed = false;
 
@@ -75,20 +79,59 @@ class CameraFollower {
     final marker = _latest;
     if (marker == null) return;
 
-    _lastMove = now();
+    final time = now();
+    final target = follow.bearing == CameraBearing.vehicle
+        ? _normalize(marker.rotation)
+        : 0.0;
+    final bearing = _nextBearing(target, time);
+
+    _lastMove = time;
     moveCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: marker.position,
           zoom: follow.zoom,
           tilt: follow.tilt,
-          bearing: follow.bearing == CameraBearing.vehicle
-              ? _normalize(marker.rotation)
-              : 0,
+          bearing: bearing,
         ),
       ),
     );
+
+    // Keep turning towards the marker even if it stops sending positions.
+    if (_differenceTo(target) > _closeEnough) {
+      _trailing ??= Timer(minInterval, () {
+        _trailing = null;
+        if (!_disposed) _move();
+      });
+    }
   }
+
+  /// The map is close enough to the vehicle direction to stop moving it.
+  static const double _closeEnough = 0.5;
+
+  /// The bearing for the next camera update: a step from the current one
+  /// towards [target], by the shortest way round.
+  double _nextBearing(double target, Duration time) {
+    final lag = follow.bearingLag.inMicroseconds;
+    final current = _bearing;
+    final last = _lastMove;
+    if (current == null || last == null || lag <= 0) return _bearing = target;
+
+    // Exponential approach: after one lag it has covered about 63% of the way.
+    final elapsed = (time - last).inMicroseconds;
+    final share = 1 - math.exp(-elapsed / lag);
+    return _bearing =
+        _normalize(current + _signedDifference(current, target) * share);
+  }
+
+  double _differenceTo(double target) {
+    final current = _bearing;
+    return current == null ? 0 : _signedDifference(current, target).abs();
+  }
+
+  /// Degrees to turn from [from] to [to], between -180 and 180.
+  static double _signedDifference(double from, double to) =>
+      ((to - from + 540) % 360) - 180;
 
   static double _normalize(double degrees) => ((degrees % 360) + 360) % 360;
 
