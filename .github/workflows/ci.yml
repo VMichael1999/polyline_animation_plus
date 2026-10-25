@@ -60,17 +60,17 @@ jobs:
           flutter-version: ${{ matrix.flutter != 'stable' && matrix.flutter || '' }}
           channel: stable
           cache: true
+      # The example needs a newer SDK than the package, so it is left out of
+      # dependency resolution (--no-example) and only lib and test are checked.
       - name: Resolve dependencies
         run: |
           if [ "${{ matrix.deps }}" = "minimum" ]; then
-            flutter pub downgrade
+            flutter pub downgrade --no-example
           else
-            flutter pub upgrade
+            flutter pub upgrade --no-example
           fi
-      # The example needs a newer SDK than the package, so only lib and test
-      # are analyzed here.
-      - run: flutter analyze lib test
-      - run: flutter test
+      - run: flutter analyze --no-pub lib test
+      - run: flutter test --no-pub
 
   publish-dry-run:
     name: Publish dry run
