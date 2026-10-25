@@ -19,6 +19,10 @@ final class MapAnimationController {
 
   final int mapId;
 
+  /// Use [Marker.rotation] as the rotation of animated markers instead of the
+  /// heading between consecutive positions. Default is false.
+  final bool useMarkerRotation;
+
   /// Duration for marker animation transitions. Default is 2 second.
   final Duration markersAnimationDuration;
 
@@ -29,6 +33,7 @@ final class MapAnimationController {
     Set<AnimatedPolyline> polylines = const {},
     this.markersAnimationDuration = const Duration(milliseconds: 2000),
     this.markerListener,
+    this.useMarkerRotation = false,
   }) {
     _initialize(markers, polylines);
   }
@@ -59,6 +64,7 @@ final class MapAnimationController {
       duration: markersAnimationDuration,
       onUpdateMarkers: _updateMarker,
       onRemoveMarkers: _removeMarker,
+      useMarkerRotation: useMarkerRotation,
     );
 
     _animatedMarkersManager.push(markerSet);

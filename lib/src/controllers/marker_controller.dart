@@ -9,8 +9,17 @@ import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platf
 
 import '../tween/bearing_tween.dart';
 import '../tween/location_tween.dart';
+import '../utils/spherical_util.dart';
 
 class MarkerController {
+  /// Moves shorter than this keep the current rotation, because the heading
+  /// between two (almost) identical positions is meaningless.
+  static const double minMoveMeters = 0.5;
+
+  /// When true the rotation comes from [Marker.rotation] instead of the
+  /// heading between positions.
+  final bool useMarkerRotation;
+
   final AnimationController _animationController;
 
   late final LocationTween _locationTween;
@@ -26,6 +35,7 @@ class MarkerController {
   MarkerController({
     required Marker marker,
     required AnimationController animationController,
+    this.useMarkerRotation = false,
   }) : _currentMarker = marker,
        _animationController = animationController {
     _locationTween = LocationTween(
@@ -54,9 +64,20 @@ class MarkerController {
   }
 
   void _setupTo(Marker m) {
+    final moved =
+        SphericalUtil.computeDistanceBetween(_locationTween.end, m.position) >=
+        minMoveMeters;
+
     _currentMarker = m;
     _locationTween.swap(m.position);
-    _bearingTween.swap(_locationTween.bearing);
+
+    if (useMarkerRotation) {
+      _bearingTween.swap(m.rotation);
+    } else if (moved) {
+      _bearingTween.swap(_locationTween.bearing);
+    } else {
+      _bearingTween.swap(_bearingTween.end);
+    }
   }
 
   Marker animate(double t) {
