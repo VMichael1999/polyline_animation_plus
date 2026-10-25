@@ -72,6 +72,9 @@ class GpsSimulator {
   /// The next [fixes] positions are about 80 m away from the route.
   void sendOffRoute({int fixes = 3}) => _offRouteLeft = fixes;
 
+  /// Drives [meters] further at once, for example to reach a curve sooner.
+  void skip(double meters) => _along = min(length, _along + meters);
+
   void dispose() => stop();
 
   void _schedule() {

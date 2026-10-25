@@ -48,7 +48,7 @@ class _TrackingScreenState extends State<TrackingScreen>
   bool _consumeRoute = true;
   double _tolerance = 30;
   bool _followCamera = true;
-  CameraBearing _bearing = CameraBearing.north;
+  CameraBearing _bearing = CameraBearing.vehicle;
   double _tilt = 45;
   bool _solidLook = true;
   double _lagSeconds = 0.6;
@@ -84,7 +84,7 @@ class _TrackingScreenState extends State<TrackingScreen>
       final sprites = await Future.wait([
         for (var i = 0; i < _spriteCount; i++)
           BitmapDescriptor.asset(
-            const ImageConfiguration(size: Size(64, 64)),
+            const ImageConfiguration(size: Size(88, 88)),
             'assets/car_3d/car_${(i * _spriteStep).toString().padLeft(3, '0')}.png',
           ),
       ]);
@@ -347,6 +347,10 @@ class _TrackingScreenState extends State<TrackingScreen>
             label: Text(_gps.isRunning ? 'Pause' : 'Drive'),
           ),
           OutlinedButton(onPressed: _restart, child: const Text('Restart')),
+          OutlinedButton(
+            onPressed: () => _gps.skip(400),
+            child: const Text('Skip 400 m'),
+          ),
           OutlinedButton(
             onPressed: _gps.sendOffRoute,
             child: const Text('Go off route'),
