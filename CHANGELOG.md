@@ -1,4 +1,4 @@
-## 1.1.0 (unreleased)
+## 1.1.0
 
 ### Breaking behavior
 
@@ -16,6 +16,10 @@
 
 - `PolylineAnimator` equality and `hashCode` now include `delayStart` and `delayEnd`, and `ColorTransitionAnimation` includes `colors`. Changing only those values now restarts the animation.
 - `generateEquidistantPolylineByDuration` no longer loops forever when the path has zero length.
+- An animated polyline removed before it drew its first frame is now really removed; before, its animation kept running and drew it again.
+- `ColorTransitionAnimation` no longer fails with an empty `colors` list, and at the end of a cycle it blends back to the first color instead of jumping to a wrong one.
+- Sending the same marker position twice while a move is running no longer plays it twice.
+- With two or more positions waiting in the queue, the marker no longer skips one of them.
 
 ### Other
 

@@ -52,7 +52,10 @@ class MarkerController {
   }
 
   void pushToQueue(Marker m) {
-    if (_currentMarker == m) {
+    // Compare with the last marker that will be shown, so sending the same
+    // position again does not queue another move.
+    final latest = _queue.isEmpty ? _currentMarker : _queue.last;
+    if (latest == m) {
       return;
     }
 

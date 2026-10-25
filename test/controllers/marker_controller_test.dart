@@ -63,4 +63,46 @@ void main() {
 
     expect(controller.animate(1.0).rotation, closeTo(45, 1e-6));
   });
+
+  group('queue', () {
+    test('ignores a marker equal to the last one waiting', () {
+      final controller = _controller(
+        animation,
+        const Marker(markerId: _id, position: _origin),
+      );
+      const next = Marker(markerId: _id, position: _east);
+
+      controller.pushToQueue(next);
+      controller.pushToQueue(next);
+
+      controller.setupNextMarker();
+      expect(controller.hasMarker, isFalse);
+    });
+
+    test('ignores a marker equal to the current one when nothing waits', () {
+      final controller = _controller(
+        animation,
+        const Marker(markerId: _id, position: _origin),
+      );
+
+      controller.pushToQueue(const Marker(markerId: _id, position: _origin));
+
+      expect(controller.hasMarker, isFalse);
+    });
+
+    test('keeps different positions in order', () {
+      final controller = _controller(
+        animation,
+        const Marker(markerId: _id, position: _origin),
+      );
+
+      controller.pushToQueue(const Marker(markerId: _id, position: _east));
+      controller
+          .pushToQueue(const Marker(markerId: _id, position: LatLng(1, 1)));
+
+      controller.setupNextMarker();
+      expect(controller.currentMarker.position, _east);
+      expect(controller.hasMarker, isTrue);
+    });
+  });
 }

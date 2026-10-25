@@ -51,6 +51,32 @@ void main() {
       );
     });
 
+    test('is back at the first color at the end, ready to repeat', () {
+      expect(animator.animate(_polyline, 1).color.value, Colors.red.value);
+    });
+
+    test('does not leave the range of the colors near the end', () {
+      const three = ColorTransitionAnimation(
+        colors: [Colors.red, Colors.green, Colors.blue],
+      );
+      final value = three.animate(_polyline, 0.999).color.value;
+      // Almost red: the red channel is high and the blue one is low.
+      expect((value >> 16) & 0xFF, greaterThan(0xF0));
+      expect(value & 0xFF, lessThan(0x40));
+      expect(three.animate(_polyline, 1).color.value, Colors.red.value);
+    });
+
+    test('a single color stays that color', () {
+      const single = ColorTransitionAnimation(colors: [Colors.green]);
+      expect(single.animate(_polyline, 0.4).color.value, Colors.green.value);
+      expect(single.animate(_polyline, 1).color.value, Colors.green.value);
+    });
+
+    test('without colors the polyline is left unchanged', () {
+      const empty = ColorTransitionAnimation(colors: []);
+      expect(empty.animate(_polyline, 0.5), _polyline);
+    });
+
     test('keeps the points untouched', () {
       expect(animator.animate(_polyline, 0.3).points, _polyline.points);
     });
