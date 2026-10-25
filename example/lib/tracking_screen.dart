@@ -11,6 +11,11 @@ import 'widgets.dart';
 
 const _carId = MarkerId('car');
 
+/// The pictures of the car with a solid look are made every 5 degrees by
+/// tool/make_car_sprites.py.
+const _spriteStep = 5;
+const _spriteCount = 360 ~/ _spriteStep;
+
 /// A car that drives along a route while a simulated GPS reports its position.
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -27,6 +32,12 @@ class _TrackingScreenState extends State<TrackingScreen>
   MapAnimationController? _controller;
   GoogleMapController? _map;
   BitmapDescriptor? _icon;
+
+  /// One picture of the car for every direction, seen with the camera tilted.
+  List<BitmapDescriptor>? _sprites;
+
+  /// The direction the map is turned to, to know how the car looks on screen.
+  double _mapBearing = 0;
   late final GpsSimulator _gps;
 
   // What the controls set.
@@ -36,9 +47,11 @@ class _TrackingScreenState extends State<TrackingScreen>
   bool _followRoute = true;
   bool _consumeRoute = true;
   double _tolerance = 30;
-  bool _followCamera = false;
-  CameraBearing _bearing = CameraBearing.vehicle;
-  double _tilt = 0;
+  bool _followCamera = true;
+  CameraBearing _bearing = CameraBearing.north;
+  double _tilt = 45;
+  bool _solidLook = true;
+  double _lagSeconds = 0.6;
 
   // What is shown.
   int _fixes = 0;
@@ -67,9 +80,19 @@ class _TrackingScreenState extends State<TrackingScreen>
     BitmapDescriptor.asset(
       const ImageConfiguration(size: Size(26, 48)),
       'assets/car.png',
-    ).then((icon) {
+    ).then((icon) async {
+      final sprites = await Future.wait([
+        for (var i = 0; i < _spriteCount; i++)
+          BitmapDescriptor.asset(
+            const ImageConfiguration(size: Size(64, 64)),
+            'assets/car_3d/car_${(i * _spriteStep).toString().padLeft(3, '0')}.png',
+          ),
+      ]);
       if (!mounted) return;
-      setState(() => _icon = icon);
+      setState(() {
+        _icon = icon;
+        _sprites = sprites;
+      });
       _rebuildController();
     });
   }
@@ -89,6 +112,22 @@ class _TrackingScreenState extends State<TrackingScreen>
     _fixes++;
     _controller?.updateVehicle(position);
     setState(() {});
+  }
+
+  /// Picks the picture of the car for the direction it faces on the screen:
+  /// the direction it drives minus the direction the map is turned to.
+  Marker _byDirection(Marker marker) {
+    final sprites = _sprites;
+    if (sprites == null) return marker;
+
+    final onScreen = (((marker.rotation - _mapBearing) % 360) + 360) % 360;
+    final index = (onScreen / _spriteStep).round() % _spriteCount;
+    return marker.copyWith(
+      iconParam: sprites[index],
+      rotationParam: 0,
+      flatParam: false,
+      anchorParam: const Offset(0.5, 0.57),
+    );
   }
 
   /// Creates the controller again. Some options can only be given when it is
@@ -121,6 +160,7 @@ class _TrackingScreenState extends State<TrackingScreen>
                 Duration(milliseconds: (_moveSeconds * 1000).round()),
               ),
       markerListener: (_) => _markerFrames++,
+      markerFrameBuilder: _solidLook ? _byDirection : null,
     );
     _controller = controller;
     _applyTracking();
@@ -169,6 +209,7 @@ class _TrackingScreenState extends State<TrackingScreen>
         zoom: 18,
         tilt: _tilt,
         bearing: _bearing,
+        bearingLag: Duration(milliseconds: (_lagSeconds * 1000).round()),
         onFollowStopped: () {
           if (!mounted) return;
           setState(() => _followCamera = false);
@@ -221,6 +262,7 @@ class _TrackingScreenState extends State<TrackingScreen>
             );
             _rebuildController();
           },
+          onCameraMove: (position) => _mapBearing = position.bearing,
           onCameraMoveStarted: () => _controller?.onCameraMoveStarted(),
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
@@ -448,6 +490,19 @@ class _TrackingScreenState extends State<TrackingScreen>
           setState(() {});
         },
       ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Solid-looking car'),
+        subtitle: const Text(
+          'A picture for every direction, made for a tilt of 45°. '
+          'It looks best while the camera follows the car.',
+        ),
+        value: _solidLook,
+        onChanged: (v) {
+          _solidLook = v;
+          _rebuildController();
+        },
+      ),
       SegmentedButton<CameraBearing>(
         segments: const [
           ButtonSegment(
@@ -461,6 +516,18 @@ class _TrackingScreenState extends State<TrackingScreen>
           _bearing = v.first;
           _applyCamera();
           setState(() {});
+        },
+      ),
+      LabeledSlider(
+        label: 'Map lag',
+        value: _lagSeconds,
+        min: 0,
+        max: 2,
+        divisions: 8,
+        display: '${_lagSeconds.toStringAsFixed(2)} s',
+        onChanged: (v) {
+          setState(() => _lagSeconds = v);
+          _applyCamera();
         },
       ),
       LabeledSlider(

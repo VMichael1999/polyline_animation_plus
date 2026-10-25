@@ -26,5 +26,6 @@ flutter:
 
   assets:
     - assets/car.png
+    - assets/car_3d/
 
 
