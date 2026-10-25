@@ -7,7 +7,7 @@ A Flutter package for creating smooth, customizable polyline animations on Googl
 ## 🎥 Demo
 
 <p align="center">
-<img src="doc/demo.gif" width="30%" alt="Animated polyline drawing on Google Maps" />
+<img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/demo.gif" width="30%" alt="Animated polyline drawing on Google Maps" />
 <br>
 This animation represents how the plugin behaves
 </p>
@@ -19,7 +19,8 @@ This animation represents how the plugin behaves
 - 🎬 **Animated polylines** with progressive drawing effects
 - 🔁 **Repeatable** or one‑shot animations
 - ⏱️ **Custom duration**, delay, and animation curves
-- 🗺️ Works on **Android & iOS** (Google Maps)
+- 📍 **Animated markers** that glide between positions and turn towards the direction of travel
+- 🗺️ Works on **Android, iOS and web** (Google Maps)
 - 🧩 Supports **multiple animated polylines** simultaneously
 - ⚡ Built using the `google_maps_flutter_platform_interface`
 
@@ -94,7 +95,52 @@ onMapCreated(GoogleMapController controller) {
 }
 ```
 
+Remember to release the controller when the map goes away:
+
+```dart
+@override
+void dispose() {
+  mapAnimationController.dispose();
+  super.dispose();
+}
+```
+
 More complete examples can be found in the `/example` folder.
+
+---
+
+## 📍 Animated markers
+
+Pass the markers to the same controller and call `updateMarkers` every time a position changes (for example, on each GPS update). The marker glides from its previous position to the new one and rotates towards the direction of travel.
+
+```dart
+mapAnimationController = MapAnimationController(
+  mapId: controller.mapId,
+  vsync: this,
+  markers: {
+    Marker(markerId: const MarkerId('driver'), position: start),
+  },
+  // How long each move takes. Default: 2 seconds.
+  markersAnimationDuration: const Duration(seconds: 2),
+  // Called with the markers updated on every animation frame.
+  markerListener: (markers) {},
+);
+
+// When a new position arrives, send the full set of markers:
+mapAnimationController.updateMarkers({
+  Marker(markerId: const MarkerId('driver'), position: newPosition),
+});
+```
+
+- `updateMarkers` receives **all** the markers: the ones you leave out are removed from the map.
+- Positions that arrive while a marker is still moving wait in a queue and are played in order.
+- A marker that does not move keeps its rotation. Set `useMarkerRotation: true` to use `Marker.rotation` instead of the heading between positions.
+
+---
+
+## ⚠️ Do not pass the same IDs to `GoogleMap`
+
+The controller draws directly on the map, using the `mapId`. If the `GoogleMap` widget also receives a polyline or marker with the same ID in its `polylines` or `markers`, the widget will overwrite what the controller draws. Give the controller its own IDs and leave them out of the widget's sets.
 
 ---
 
