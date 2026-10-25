@@ -40,6 +40,8 @@ class AnimatedMarkersManager {
 
   int _lastFrameIndex = -1;
 
+  bool _isRestarting = false;
+
   bool get isAnimating => _animationController.isAnimating;
 
   void push(Set<Marker> markers) {
@@ -68,7 +70,12 @@ class AnimatedMarkersManager {
     if (animationRequired) {
       _lastFrameIndex = -1;
 
+      // reset() reports `dismissed` synchronously. Without this guard the status
+      // listener would start the next queued move before this one began, and
+      // the marker would skip a position.
+      _isRestarting = true;
       _animationController.reset();
+      _isRestarting = false;
       _animationController.forward();
     }
   }
@@ -94,6 +101,8 @@ class AnimatedMarkersManager {
   }
 
   void _statusListener(AnimationStatus status) {
+    if (_isRestarting) return;
+
     if (status case (AnimationStatus.completed || AnimationStatus.dismissed)) {
       _clearMarkersToBeRemoved();
 

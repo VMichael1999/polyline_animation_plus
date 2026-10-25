@@ -19,6 +19,15 @@ Polyline _line(PolylineId id) =>
 Marker _marker(MarkerId id, LatLng position) =>
     Marker(markerId: id, position: position);
 
+/// Pumps in small steps: an animation started inside a frame only begins to
+/// advance on the next one.
+Future<void> _pumpFor(WidgetTester tester, Duration total) async {
+  const step = Duration(milliseconds: 100);
+  for (var elapsed = Duration.zero; elapsed < total; elapsed += step) {
+    await tester.pump(step);
+  }
+}
+
 void main() {
   late FakeMapsPlatform platform;
 
@@ -109,6 +118,31 @@ void main() {
 
       await tester.pump(const Duration(seconds: 1));
       expect(platform.markers[_a]!.position.longitude, closeTo(1, 1e-9));
+      controller.dispose();
+    });
+
+    testWidgets('plays queued positions one after the other', (tester) async {
+      final controller = create(
+        tester,
+        markers: {_marker(_a, const LatLng(0, 0))},
+      );
+
+      controller.updateMarkers({_marker(_a, const LatLng(0, 1))});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Two more positions arrive while the first move is running.
+      controller.updateMarkers({_marker(_a, const LatLng(0, 2))});
+      controller.updateMarkers({_marker(_a, const LatLng(0, 3))});
+
+      // Moves last 2 s each: 0 to 1 (ends at 2 s), 1 to 2 (4 s), 2 to 3 (6 s).
+      // 0.5 s have passed, so after 2.5 s more the second move is halfway.
+      await _pumpFor(tester, const Duration(milliseconds: 2500));
+      final longitude = platform.markers[_a]!.position.longitude;
+      expect(longitude, inInclusiveRange(1.3, 1.7), reason: 'second move');
+
+      await _pumpFor(tester, const Duration(milliseconds: 3500));
+      expect(platform.markers[_a]!.position.longitude, closeTo(3, 1e-9));
       controller.dispose();
     });
 
