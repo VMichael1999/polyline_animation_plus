@@ -62,11 +62,19 @@ class PolylineAnimationController {
       );
     }
 
-    if (polylineAnimator.repeat) {
-      _controller.repeat(
-        reverse: polylineAnimator.reverse,
-        count: polylineAnimator.repeatCount,
+    final repeatCount = polylineAnimator.repeatCount;
+    if (polylineAnimator.repeat && repeatCount != null) {
+      // AnimationController.repeat(count:) does not exist in older Flutter
+      // versions, so limited repeats use their own simulation.
+      _controller.animateWith(
+        _LimitedRepeatSimulation(
+          passes: repeatCount,
+          reverse: polylineAnimator.reverse,
+          period: totalDuration,
+        ),
       );
+    } else if (polylineAnimator.repeat) {
+      _controller.repeat(reverse: polylineAnimator.reverse);
     } else {
       _controller.forward();
     }
@@ -94,4 +102,36 @@ class PolylineAnimationController {
 
     _controller.dispose();
   }
+}
+
+/// Plays [passes] passes from 0 to 1, or alternately 0 to 1 and 1 to 0 when
+/// [reverse] is true, each lasting [period]. It behaves like
+/// `AnimationController.repeat(count: passes)`.
+class _LimitedRepeatSimulation extends Simulation {
+  _LimitedRepeatSimulation({
+    required this.passes,
+    required this.reverse,
+    required Duration period,
+  }) : _periodSeconds = period.inMicroseconds / Duration.microsecondsPerSecond;
+
+  final int passes;
+  final bool reverse;
+  final double _periodSeconds;
+
+  bool _isForward(int pass) => !reverse || pass.isEven;
+
+  @override
+  double x(double timeInSeconds) {
+    if (isDone(timeInSeconds)) return _isForward(passes - 1) ? 1.0 : 0.0;
+
+    final pass = timeInSeconds ~/ _periodSeconds;
+    final fraction = (timeInSeconds - pass * _periodSeconds) / _periodSeconds;
+    return _isForward(pass) ? fraction : 1.0 - fraction;
+  }
+
+  @override
+  double dx(double timeInSeconds) => 0.0;
+
+  @override
+  bool isDone(double timeInSeconds) => timeInSeconds >= passes * _periodSeconds;
 }

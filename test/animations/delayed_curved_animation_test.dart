@@ -39,12 +39,12 @@ void main() {
     controller.value = 0.1;
     expect(animation.value, 0);
     expect(animation.isInStartDelay, isTrue);
-    expect(animation.isAnimating, isFalse);
+    expect(animation.isInAnimationPhase, isFalse);
 
     controller.value = 0.9;
     expect(animation.value, 1);
     expect(animation.isInEndDelay, isTrue);
-    expect(animation.isAnimating, isFalse);
+    expect(animation.isInAnimationPhase, isFalse);
   });
 
   test('maps the middle of the cycle to the middle of the animation', () {
@@ -53,7 +53,7 @@ void main() {
 
     expect(animation.value, closeTo(0.5, 1e-9));
     expect(animation.animationProgress, closeTo(0.5, 1e-9));
-    expect(animation.isAnimating, isTrue);
+    expect(animation.isInAnimationPhase, isTrue);
   });
 
   test('animationProgress is 0 and 1 at the ends', () {

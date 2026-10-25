@@ -8,6 +8,8 @@ class _RecordingAnimator extends PolylineAnimator {
     required super.duration,
     super.delayStart,
     super.repeat,
+    super.repeatCount,
+    super.reverse,
   });
 
   static final progress = <double>[];
@@ -97,6 +99,68 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 5));
       expect(_RecordingAnimator.stops, 0);
+      controller.dispose();
+    });
+  });
+
+  group('repeatCount', () {
+    PolylineAnimationController create(
+      WidgetTester tester, {
+      required int count,
+      bool reverse = false,
+    }) =>
+        PolylineAnimationController(
+          vsync: tester,
+          polyline: polyline,
+          polylineListener: (_) {},
+          polylineAnimator: _RecordingAnimator(
+            duration: const Duration(seconds: 1),
+            repeat: true,
+            repeatCount: count,
+            reverse: reverse,
+          ),
+        );
+
+    testWidgets('plays the given number of cycles and then stops once', (
+      tester,
+    ) async {
+      final controller = create(tester, count: 3);
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 2500));
+      expect(_RecordingAnimator.stops, 0);
+
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(_RecordingAnimator.stops, 1);
+
+      final frames = _RecordingAnimator.progress.length;
+      await tester.pump(const Duration(seconds: 2));
+      expect(_RecordingAnimator.progress.length, frames);
+      expect(_RecordingAnimator.stops, 1);
+      controller.dispose();
+    });
+
+    testWidgets('restarts from the beginning on every cycle', (tester) async {
+      final controller = create(tester, count: 2);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1500));
+
+      expect(_RecordingAnimator.progress.last, closeTo(0.5, 0.05));
+      controller.dispose();
+    });
+
+    testWidgets('with reverse every forward or backward pass counts', (
+      tester,
+    ) async {
+      final controller = create(tester, count: 2, reverse: true);
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(_RecordingAnimator.progress.last, closeTo(0.5, 0.05));
+      expect(_RecordingAnimator.stops, 0);
+
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(_RecordingAnimator.stops, 1);
       controller.dispose();
     });
   });

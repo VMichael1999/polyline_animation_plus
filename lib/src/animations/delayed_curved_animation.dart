@@ -78,6 +78,6 @@ class DelayedCurvedAnimation extends CurvedAnimation {
       parent.value >
       (1 - delayEnd.inMicroseconds / totalDuration.inMicroseconds);
 
-  @override
-  bool get isAnimating => !isInStartDelay && !isInEndDelay;
+  /// Whether the animation is between its start and end delays.
+  bool get isInAnimationPhase => !isInStartDelay && !isInEndDelay;
 }
