@@ -10,6 +10,7 @@ import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platf
 import '../animator/base/polyline_animator.dart';
 import '../controllers/map_animation_controller.dart';
 import '../controllers/polyline_controller.dart';
+import '../model/polyline_animation_handle.dart';
 
 /// Manages the animation of multiple polylines on a map.
 ///
@@ -58,6 +59,10 @@ class AnimatedPolylineManager {
       _controllers[polyline.polylineId] = createController();
     }
   }
+
+  /// The handle of the animation of [polylineId], if it is being animated.
+  PolylineAnimationHandle? handleFor(PolylineId polylineId) =>
+      _controllers[polylineId]?.handle;
 
   void removePolyline(PolylineId polylineId) {
     final controller = _controllers[polylineId];
