@@ -59,6 +59,22 @@ class RoutePath {
 
   RoutePath._(this.points, this._cumulative);
 
+  static final Expando<RoutePath> _cache = Expando('RoutePath');
+
+  /// The path of [points], or `null` if they do not have two different points.
+  ///
+  /// It is remembered for the same list, so an animation that needs it on every
+  /// frame does not measure the route again. Do not change the list afterwards.
+  static RoutePath? of(List<LatLng> points) {
+    final cached = _cache[points];
+    if (cached != null) return cached;
+    try {
+      return _cache[points] = RoutePath(points);
+    } on ArgumentError {
+      return null;
+    }
+  }
+
   final List<LatLng> points;
   final List<double> _cumulative;
 
