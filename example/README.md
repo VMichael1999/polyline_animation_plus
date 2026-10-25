@@ -31,11 +31,23 @@ flutter run
 
 Without a key the app still runs, but the map shows no tiles. Routes, markers and animations are drawn on top.
 
+## The car
+
+The car is drawn from a single picture of it seen from above (`assets/car.png`). `tool/make_car_sprites.py` builds a small 3D model of it (roof, glass and hood from your picture, and doors, windows, wheels, lights, grille and plates drawn by the script) and renders 72 pictures, one every 5 degrees, with the camera tilted 45 degrees. They are in `assets/car_3d/`. The app shows the one that matches the direction the car faces on the screen, using `markerFrameBuilder`.
+
+To change the car, replace `assets/car.png` (front pointing up) and run, with Pillow installed (`pip install pillow`):
+
+```bash
+python3 tool/make_car_sprites.py
+```
+
+The pictures are made for a tilt of 45 degrees. The proportions and the sides are set at the top of the script.
+
 ## Things worth trying
 
 - **Reduce motion.** Turn it on in the system accessibility settings: polylines are drawn as they are and the car goes to its position at once.
 - **Background.** Send the app to the background and come back: the polyline animations go on from where they were.
-- **Camera.** Turn on *Follow the car* and drag the map: the camera stops following.
+- **Camera.** The camera follows the car from the start. Drag the map and it stops following. With *North up* you see the car from the side; with *Turns with car* the map turns after it (set *Map lag* to 0 to turn at once).
 - **Poor GPS.** Increase the noise and set the GPS to every 5 seconds. Compare `queue` with `latestOnly` and the adaptive duration.
 
 ## Notes

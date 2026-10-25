@@ -281,6 +281,28 @@ GoogleMap(
 
 The map also reports the moves the controller makes, so the ones that start right after one of its camera updates are ignored. The user is therefore noticed once the camera has stopped being moved for a moment, for example when the vehicle stops. It has not been checked on devices how each platform reports it.
 
+### A vehicle that looks like a solid object
+
+Google Maps markers are flat pictures, so a car seen from above never shows its sides. A common solution is to have a picture of the car for every direction, drawn as if it were a 3D object, and show the one that matches the direction the car faces on the screen. `markerFrameBuilder` lets you pick it on every frame:
+
+```dart
+MapAnimationController(
+  mapId: controller.mapId,
+  vsync: this,
+  markerFrameBuilder: (marker) {
+    // The direction on the screen: where the car drives minus where the map points.
+    final onScreen = ((marker.rotation - mapBearing) % 360 + 360) % 360;
+    return marker.copyWith(
+      iconParam: pictures[(onScreen / 5).round() % 72],
+      rotationParam: 0,
+      flatParam: false,
+    );
+  },
+);
+```
+
+Keep `mapBearing` from `GoogleMap.onCameraMove`. The `example` app does this, and includes a script that draws the pictures from a single picture of the car seen from above (`example/tool/make_car_sprites.py`). Use `VehicleTracking.turnSmoothingMeters` and `CameraFollow.bearingLag` so the car and the map turn gradually.
+
 ## Battery and accessibility
 
 - **Background.** By default (`pauseInBackground: true`) polyline animations stop when the app goes to the background and go on from the same place when it comes back. An animation you paused with its handle stays paused. Marker moves are not paused, because they have to show the latest positions.
