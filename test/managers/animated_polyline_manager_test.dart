@@ -22,7 +22,7 @@ void main() {
     final updates = <Polyline>[];
     final manager = AnimatedPolylineManager(
       vsync: tester,
-      polylineListener: updates.add,
+      polylinesListener: (_, polylines) => updates.addAll(polylines),
     );
 
     manager.push(
@@ -52,7 +52,7 @@ void main() {
   testWidgets('removes polylines one at a time or in bulk', (tester) async {
     final manager = AnimatedPolylineManager(
       vsync: tester,
-      polylineListener: (_) {},
+      polylinesListener: (_, __) {},
     );
     const animator = SnackAnimator(repeat: true);
     manager.push(polyline: _polyline, polylineAnimator: animator);
@@ -76,7 +76,7 @@ void main() {
     final updates = <Polyline>[];
     final manager = AnimatedPolylineManager(
       vsync: tester,
-      polylineListener: updates.add,
+      polylinesListener: (_, polylines) => updates.addAll(polylines),
     );
     const animator = SnackAnimator(
       duration: Duration(seconds: 2),

@@ -1,3 +1,23 @@
+## 1.3.0 (unreleased)
+
+### Breaking behavior
+
+- Polyline animations now pause when the app goes to the background and go on from the same place when it returns. Use `pauseInBackground: false` on `MapAnimationController` to keep the old behavior.
+- When the system asks to reduce motion, polylines are drawn as they are and markers move at once. Use `respectReduceMotion: false` to keep animating.
+
+### New
+
+- `PulseAnimator`: a light that travels along a dimmed copy of the route (extra polyline `<id>#glow`).
+- `DashFlowAnimator`: dashes that flow along the route. Its limitation (pattern in pixels, cut in meters) is documented.
+- `AnimatedPolyline.segmented` and `RouteSegment`: a route in several colors, with the animator applied to the whole route.
+- `MapAnimationController.followCamera(CameraFollow(...))`, `stopFollowingCamera()` and `onCameraMoveStarted()` to follow a marker with the camera and stop when the user moves the map.
+- `PolylineAnimator.animateAll` and `PolylineAnimator.reducedMotionFrame` for animations made of several polylines.
+- `MapAnimationController.pauseInBackground` and `respectReduceMotion`.
+
+### Other
+
+- An animation without duration is drawn at once and redrawn when its polyline changes.
+
 ## 1.2.0 (unreleased)
 
 ### Breaking behavior
@@ -11,8 +31,14 @@
 - `MapAnimationController.markerAnimationMode`: `MarkerAnimationMode.queue` (default, as before) or `MarkerAnimationMode.latestOnly`, which goes straight to the newest position from where the marker is shown and drops the ones in between.
 - `MapAnimationController.markerDuration`: `MarkerDuration.fixed(duration)` or `MarkerDuration.adaptive(max: duration)`, where each move lasts as long as the time between positions. `markersAnimationDuration` still works and is a shortcut for `fixed`.
 
+- Vehicle tracking: `MapAnimationController.trackVehicle(VehicleTracking(...))`, `updateVehicle(position)` and `stopTrackingVehicle(markerId)`. Positions are put on the route (searching around the last known distance first, so crossing routes and parallel streets do not cause jumps), the route is drawn as travelled and remaining (`RouteStyle`), `followRoute` makes the marker follow the route and turn at the corners, and `onOffRoute` reports positions beyond `snapToleranceMeters`.
+- Animation control: `MapAnimationController.polylineAnimation(id)` returns a `PolylineAnimationHandle` with `pause()`, `resume()`, `seek(progress)`, `isPlaying`, `isCompleted`, `value`, a `progress` stream, `onComplete` and `onCycle`.
+- `PolylineCodec.decode` and `PolylineCodec.encode` for the Google Encoded Polyline format, with precision 5 or 6.
+- `MapAnimationUtils.boundsOf(points)`.
+
 ### Other
 
+- Polyline animations now run on their own simulation, with the same timing as before, so they can be paused and resumed at any point.
 - All markers share one ticker and the changes of a frame go to the map together. With 50 markers it is one map call per frame, as before, at about 170 µs per frame in the test harness.
 
 ## 1.1.0

@@ -1,8 +1,15 @@
 export 'src/animator/base/polyline_animator.dart';
 export 'src/animator/color_animator.dart';
+export 'src/animator/dash_flow_animator.dart';
 export 'src/animator/fade_in_progressive_animator.dart';
+export 'src/animator/pulse_animator.dart';
 export 'src/animator/snack_animator.dart';
 export 'src/controllers/map_animation_controller.dart';
 export 'src/model/animated_polyline.dart';
+export 'src/model/camera_follow.dart';
 export 'src/model/marker_animation.dart';
+export 'src/model/polyline_animation_handle.dart';
+export 'src/model/route_segment.dart';
+export 'src/model/vehicle_tracking.dart';
+export 'src/utils/polyline_codec.dart';
 export 'src/utils/util.dart';

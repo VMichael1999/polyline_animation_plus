@@ -12,6 +12,34 @@ final class MapAnimationUtils {
   /// Tolerance used to absorb floating point error when comparing distances.
   static const _epsilonMeters = 1e-6;
 
+  /// The smallest box that contains every point of [points].
+  ///
+  /// Useful to move the camera so a whole route is visible:
+  /// `CameraUpdate.newLatLngBounds(MapAnimationUtils.boundsOf(route), 50)`.
+  ///
+  /// It does not handle points on both sides of the 180th meridian. Throws an
+  /// [ArgumentError] if [points] is empty.
+  static LatLngBounds boundsOf(List<LatLng> points) {
+    if (points.isEmpty) {
+      throw ArgumentError.value(points, 'points', 'Must not be empty');
+    }
+
+    var south = points.first.latitude;
+    var north = south;
+    var west = points.first.longitude;
+    var east = west;
+    for (final point in points) {
+      if (point.latitude < south) south = point.latitude;
+      if (point.latitude > north) north = point.latitude;
+      if (point.longitude < west) west = point.longitude;
+      if (point.longitude > east) east = point.longitude;
+    }
+    return LatLngBounds(
+      southwest: LatLng(south, west),
+      northeast: LatLng(north, east),
+    );
+  }
+
   /// Returns points along [path] that are the same distance apart, so a
   /// progressive animation moves at a constant speed on the map.
   ///

@@ -42,7 +42,7 @@ void main() {
     final controller = PolylineAnimationController(
       vsync: tester,
       polyline: polyline,
-      polylineListener: (_) {},
+      polylinesListener: (_, __) {},
       polylineAnimator: const _RecordingAnimator(
         duration: Duration(seconds: 4),
         delayStart: Duration(seconds: 1),
@@ -67,7 +67,7 @@ void main() {
         PolylineAnimationController(
           vsync: tester,
           polyline: polyline,
-          polylineListener: (_) {},
+          polylinesListener: (_, __) {},
           polylineAnimator: _RecordingAnimator(
             duration: const Duration(seconds: 1),
             repeat: repeat,
@@ -112,7 +112,7 @@ void main() {
         PolylineAnimationController(
           vsync: tester,
           polyline: polyline,
-          polylineListener: (_) {},
+          polylinesListener: (_, __) {},
           polylineAnimator: _RecordingAnimator(
             duration: const Duration(seconds: 1),
             repeat: true,

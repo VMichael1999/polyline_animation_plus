@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
 import '../animator/base/polyline_animator.dart';
-import '../controllers/map_animation_controller.dart';
 import '../controllers/polyline_controller.dart';
+import '../model/polyline_animation_handle.dart';
 
 /// Manages the animation of multiple polylines on a map.
 ///
@@ -23,13 +23,19 @@ class AnimatedPolylineManager {
   final TickerProvider _vsync;
 
   /// Callback invoked when a polyline is updated during animation
-  final PolylineListener _listener;
+  final void Function(PolylineId owner, List<Polyline> polylines) _listener;
 
   AnimatedPolylineManager({
     required TickerProvider vsync,
-    required PolylineListener polylineListener,
+    required void Function(PolylineId owner, List<Polyline> polylines)
+        polylinesListener,
+    bool reducedMotion = false,
   })  : _vsync = vsync,
-        _listener = polylineListener;
+        _listener = polylinesListener,
+        _reducedMotion = reducedMotion;
+
+  bool _reducedMotion;
+  bool _inBackground = false;
 
   List<PolylineId> get activePolylineIds => _controllers.keys.toList();
 
@@ -40,10 +46,11 @@ class AnimatedPolylineManager {
     PolylineAnimationController createController() =>
         PolylineAnimationController(
           vsync: _vsync,
-          polylineListener: _listener,
+          polylinesListener: _listener,
           polylineAnimator: polylineAnimator,
           polyline: polyline,
-        );
+          reducedMotion: _reducedMotion,
+        )..setInBackground(_inBackground);
 
     final controller = _controllers[polyline.polylineId];
 
@@ -58,6 +65,27 @@ class AnimatedPolylineManager {
       _controllers[polyline.polylineId] = createController();
     }
   }
+
+  /// The app went to the background or came back: the animations keep their
+  /// place and go on when it returns.
+  void setInBackground(bool inBackground) {
+    _inBackground = inBackground;
+    for (final controller in _controllers.values) {
+      controller.setInBackground(inBackground);
+    }
+  }
+
+  /// The system started or stopped asking to reduce motion.
+  void setReducedMotion(bool reduced) {
+    _reducedMotion = reduced;
+    for (final controller in _controllers.values) {
+      controller.setReducedMotion(reduced);
+    }
+  }
+
+  /// The handle of the animation of [polylineId], if it is being animated.
+  PolylineAnimationHandle? handleFor(PolylineId polylineId) =>
+      _controllers[polylineId]?.handle;
 
   void removePolyline(PolylineId polylineId) {
     final controller = _controllers[polylineId];

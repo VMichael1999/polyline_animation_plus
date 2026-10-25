@@ -4,25 +4,66 @@
 // Internal, not exported: public API docs are only required for exported code.
 // ignore_for_file: public_member_api_docs
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
 import '../animations/delayed_curved_animation.dart';
 import '../animator/base/polyline_animator.dart';
+import '../model/polyline_animation_handle.dart';
 
 /// Controls the animation of a polyline.
 ///
 /// This class manages the animation lifecycle and state for a polyline animation,
 /// including starting, stopping, and updating the animation based on the configuration.
-class PolylineAnimationController {
+class PolylineAnimationController implements PolylineAnimationBackend {
   /// The ticker provider that drives the animation
   final TickerProvider vsync;
   final PolylineAnimator polylineAnimator;
-  final void Function(Polyline) polylineListener;
+
+  /// Called on every frame with the animated polyline and the extra polylines
+  /// of the animation, if any. The first argument is the animated polyline.
+  final void Function(PolylineId owner, List<Polyline> polylines)
+      polylinesListener;
   late final AnimationController _controller;
   late final Animation<double> _curvedAnimation;
 
+  /// What the app uses to pause, seek and follow this animation.
+  late final PolylineAnimationHandle handle = PolylineAnimationHandle(this);
+
   Polyline _polyline;
+
+  late final double _periodSeconds;
+
+  /// Number of passes to play, or `null` for ever.
+  late final int? _passes;
+
+  /// Where the current simulation started, in seconds of animation time.
+  double _offset = 0;
+
+  /// Animation time at the moment it was paused or sought.
+  double _frozenTime = 0;
+
+  /// Passes already reported through `onCycle`.
+  int _reportedPasses = 0;
+
+  _State _state = _State.playing;
+
+  /// What the app asked for with pause() and resume(). The animation also
+  /// stays still while the app is in the background or the user asked the
+  /// system to reduce motion, and picks up again afterwards if this is true.
+  bool _wantsToPlay = true;
+  bool _inBackground = false;
+
+  /// Whether the user asked the system to reduce motion: nothing runs and the
+  /// polyline is drawn as it is.
+  bool _reducedMotion = false;
+
+  bool _changingValue = false;
+  bool _disposed = false;
+
+  final StreamController<double> _progress = StreamController.broadcast();
 
   bool get isAnimating => _controller.isAnimating;
 
@@ -30,8 +71,10 @@ class PolylineAnimationController {
     required this.vsync,
     required Polyline polyline,
     required this.polylineAnimator,
-    required this.polylineListener,
-  }) : _polyline = polyline {
+    required this.polylinesListener,
+    bool reducedMotion = false,
+  })  : _polyline = polyline,
+        _reducedMotion = reducedMotion {
     _initialize();
   }
 
@@ -41,6 +84,8 @@ class PolylineAnimationController {
     final totalDuration = polylineAnimator.duration +
         polylineAnimator.delayStart +
         polylineAnimator.delayEnd;
+    _periodSeconds =
+        totalDuration.inMicroseconds / Duration.microsecondsPerSecond;
 
     _controller = AnimationController(vsync: vsync, duration: totalDuration)
       ..addListener(_listener)
@@ -62,70 +107,244 @@ class PolylineAnimationController {
       );
     }
 
-    final repeatCount = polylineAnimator.repeatCount;
-    if (polylineAnimator.repeat && repeatCount != null) {
-      // AnimationController.repeat(count:) does not exist in older Flutter
-      // versions, so limited repeats use their own simulation.
-      _controller.animateWith(
-        _LimitedRepeatSimulation(
-          passes: repeatCount,
-          reverse: polylineAnimator.reverse,
-          period: totalDuration,
-        ),
-      );
-    } else if (polylineAnimator.repeat) {
-      _controller.repeat(reverse: polylineAnimator.reverse);
-    } else {
-      _controller.forward();
+    _passes = polylineAnimator.repeat ? polylineAnimator.repeatCount : 1;
+    if (_reducedMotion) {
+      _state = _State.paused;
+      _drawReducedMotion();
+      return;
     }
+    _play(0);
+
+    // An animation without duration is already at its end: draw it now instead
+    // of waiting for the first frame.
+    if (_periodSeconds <= 0) _listener();
+  }
+
+  /// Plays from [time] seconds of animation time.
+  ///
+  /// A custom simulation is used instead of AnimationController.repeat because
+  /// repeat(count:) does not exist in older Flutter versions and it cannot
+  /// resume from a given time.
+  void _play(double time) {
+    _offset = time;
+    _reportedPasses = _passIndexAt(time);
+    _state = _State.playing;
+    _controller.animateWith(
+      _CycleSimulation(
+        period: _periodSeconds,
+        passes: _passes,
+        reverse: polylineAnimator.reverse,
+        offset: time,
+      ),
+    );
+  }
+
+  int _passIndexAt(double time) =>
+      _periodSeconds <= 0 ? 0 : (time / _periodSeconds).floor();
+
+  /// Animation time now, in seconds. Only meaningful while playing.
+  double get _timeNow {
+    final elapsed = _controller.lastElapsedDuration;
+    return _offset +
+        (elapsed == null
+            ? 0
+            : elapsed.inMicroseconds / Duration.microsecondsPerSecond);
   }
 
   void updatePolyline(Polyline polyline) {
     _polyline = polyline;
-  }
-
-  void _listener() {
-    final progress = _curvedAnimation.value;
-    final animatedPolyline = polylineAnimator.animate(_polyline, progress);
-    polylineListener(animatedPolyline);
-  }
-
-  void _statusListener(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      polylineAnimator.onAnimationStop();
+    // Nothing is running to redraw it when there is no duration or motion.
+    if (_reducedMotion) {
+      _drawReducedMotion();
+    } else if (_periodSeconds <= 0) {
+      _listener();
     }
   }
 
+  void _drawReducedMotion() => polylinesListener(
+        _polyline.polylineId,
+        polylineAnimator.reducedMotionFrame(_polyline),
+      );
+
+  /// Plays or stops the animation to match what it should be doing now.
+  void _sync() {
+    if (_disposed || _state == _State.finished) return;
+
+    final shouldRun = _wantsToPlay && !_inBackground && !_reducedMotion;
+    if (shouldRun && _state == _State.paused) {
+      _play(_frozenTime);
+    } else if (!shouldRun && _state == _State.playing) {
+      _frozenTime = _timeNow;
+      _controller.stop();
+      _state = _State.paused;
+    }
+  }
+
+  /// The app went to the background (true) or came back (false). The animation
+  /// keeps its place and goes on when the app returns, unless the user paused
+  /// it.
+  void setInBackground(bool inBackground) {
+    if (_inBackground == inBackground) return;
+    _inBackground = inBackground;
+    _sync();
+  }
+
+  /// The system started (true) or stopped (false) asking to reduce motion.
+  /// While it does, the polyline is drawn as it is and nothing moves.
+  void setReducedMotion(bool reduced) {
+    if (_disposed || _reducedMotion == reduced) return;
+    _reducedMotion = reduced;
+
+    if (reduced) {
+      _sync();
+      _drawReducedMotion();
+    } else {
+      _sync();
+    }
+  }
+
+  void _listener() {
+    if (_disposed) return;
+
+    final progress = _curvedAnimation.value;
+    polylinesListener(
+      _polyline.polylineId,
+      polylineAnimator.animateAll(_polyline, progress),
+    );
+
+    if (_progress.hasListener) _progress.add(_controller.value);
+
+    if (_state == _State.playing && !_changingValue) _reportCycles();
+  }
+
+  /// Reports the passes that ended since the last frame.
+  void _reportCycles() {
+    final passes = _passes;
+    var ended = _passIndexAt(_timeNow);
+    // The last pass is reported when the animation completes.
+    if (passes != null && ended >= passes) ended = passes - 1;
+
+    while (_reportedPasses < ended) {
+      _reportedPasses++;
+      handle.onCycle?.call(_reportedPasses);
+    }
+  }
+
+  void _statusListener(AnimationStatus status) {
+    if (_disposed || _changingValue) return;
+    if (status != AnimationStatus.completed) return;
+
+    _state = _State.finished;
+    final passes = _passes;
+    _frozenTime = (passes ?? 0) * _periodSeconds;
+    if (passes != null) {
+      while (_reportedPasses < passes) {
+        _reportedPasses++;
+        handle.onCycle?.call(_reportedPasses);
+      }
+    }
+    polylineAnimator.onAnimationStop();
+    handle.onComplete?.call();
+  }
+
+  @override
+  void pause() {
+    if (_disposed) return;
+    _wantsToPlay = false;
+    _sync();
+  }
+
+  @override
+  void resume() {
+    if (_disposed || _state == _State.finished) return;
+    _wantsToPlay = true;
+    _sync();
+  }
+
+  @override
+  void seek(double progress) {
+    if (_disposed) return;
+    final target = progress.clamp(0.0, 1.0);
+
+    final wasPlaying = _state == _State.playing;
+    final time = wasPlaying ? _timeNow : _frozenTime;
+
+    // Stay in the pass that is running, and take the direction into account:
+    // a pass played backwards shows the progress the other way round.
+    var pass = _passIndexAt(time);
+    final passes = _passes;
+    if (passes != null && pass >= passes) pass = passes - 1;
+    final forward = !polylineAnimator.reverse || pass.isEven;
+    final fraction = forward ? target : 1 - target;
+    _frozenTime = (pass + fraction) * _periodSeconds;
+
+    _changingValue = true;
+    _controller.value = target; // also stops the running simulation
+    _changingValue = false;
+
+    if (wasPlaying) {
+      _play(_frozenTime);
+    } else {
+      // A finished animation that is sought stays where it is until resumed.
+      if (_state == _State.finished) _wantsToPlay = false;
+      _state = _State.paused;
+    }
+  }
+
+  @override
+  bool get isPlaying => _state == _State.playing;
+
+  @override
+  bool get isCompleted => _state == _State.finished;
+
+  @override
+  double get value => _controller.value;
+
+  @override
+  Stream<double> get progress => _progress.stream;
+
   void dispose() {
+    _disposed = true;
     _controller.removeListener(_listener);
     _controller.removeStatusListener(_statusListener);
 
     _controller.dispose();
+    _progress.close();
   }
 }
 
-/// Plays [passes] passes from 0 to 1, or alternately 0 to 1 and 1 to 0 when
-/// [reverse] is true, each lasting [period]. It behaves like
+enum _State { playing, paused, finished }
+
+/// Plays [passes] passes from 0 to 1 (for ever when `null`), or alternately 0
+/// to 1 and 1 to 0 when [reverse] is true, each lasting [period] seconds.
+/// Starting from [offset] seconds in. It behaves like
 /// `AnimationController.repeat(count: passes)`.
-class _LimitedRepeatSimulation extends Simulation {
-  _LimitedRepeatSimulation({
+class _CycleSimulation extends Simulation {
+  _CycleSimulation({
+    required this.period,
     required this.passes,
     required this.reverse,
-    required Duration period,
-  }) : _periodSeconds = period.inMicroseconds / Duration.microsecondsPerSecond;
+    required this.offset,
+  });
 
-  final int passes;
+  final double period;
+  final int? passes;
   final bool reverse;
-  final double _periodSeconds;
+  final double offset;
 
   bool _isForward(int pass) => !reverse || pass.isEven;
 
   @override
   double x(double timeInSeconds) {
-    if (isDone(timeInSeconds)) return _isForward(passes - 1) ? 1.0 : 0.0;
+    final time = offset + timeInSeconds;
+    final total = passes;
+    if (period <= 0) return total == null || _isForward(total - 1) ? 1.0 : 0.0;
+    if (total != null && time >= total * period) {
+      return _isForward(total - 1) ? 1.0 : 0.0;
+    }
 
-    final pass = timeInSeconds ~/ _periodSeconds;
-    final fraction = (timeInSeconds - pass * _periodSeconds) / _periodSeconds;
+    final pass = time ~/ period;
+    final fraction = (time - pass * period) / period;
     return _isForward(pass) ? fraction : 1.0 - fraction;
   }
 
@@ -133,5 +352,9 @@ class _LimitedRepeatSimulation extends Simulation {
   double dx(double timeInSeconds) => 0.0;
 
   @override
-  bool isDone(double timeInSeconds) => timeInSeconds >= passes * _periodSeconds;
+  bool isDone(double timeInSeconds) {
+    final total = passes;
+    if (period <= 0) return total != null;
+    return total != null && offset + timeInSeconds >= total * period;
+  }
 }

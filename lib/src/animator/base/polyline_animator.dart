@@ -53,6 +53,25 @@ abstract class PolylineAnimator {
   /// [polyline] is always the original polyline, not the previous frame.
   Polyline animate(Polyline polyline, double progress);
 
+  /// Returns every polyline to draw for the given [progress].
+  ///
+  /// By default it is just the polyline of [animate]. Override it for an
+  /// animation made of several polylines, for example a base line and a glow
+  /// on top. The extra polylines need IDs different from [polyline] (use
+  /// `'${polyline.polylineId.value}#name'`): they are removed together with
+  /// the animated polyline, and are not available to the app.
+  List<Polyline> animateAll(Polyline polyline, double progress) => [
+        animate(polyline, progress),
+      ];
+
+  /// The polylines to draw when the animation cannot run because the user asked
+  /// the system to reduce motion.
+  ///
+  /// By default it is the polyline as it is, without animating it. Override it
+  /// when the polyline alone is not what should be shown, for example for an
+  /// animation made of several polylines.
+  List<Polyline> reducedMotionFrame(Polyline polyline) => [polyline];
+
   /// Called once when the animation reaches its end.
   ///
   /// It is not called when the animation is disposed or removed before it

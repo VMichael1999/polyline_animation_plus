@@ -118,6 +118,8 @@ All animators share these options: `duration`, `curve`, `repeat`, `repeatCount`,
 | `SnackAnimator` | Draws the line from start to end, then erases it in the same direction. |
 | `FadeInProgressiveAnimator` | Fades the line in during the first 30% and then erases it from the start. |
 | `ColorTransitionAnimation` | Changes the color smoothly through a list of `colors`. |
+| `PulseAnimator` | A light travels along a dimmed copy of the route, for a "looking for a driver" wait. It also draws a polyline with the ID `<id>#glow`. |
+| `DashFlowAnimator` | A dashed line whose dashes flow along the route. See its limitation below. |
 
 ## Create your own animator
 
@@ -186,6 +188,141 @@ mapAnimationController = MapAnimationController(
 | `markerDuration` | `MarkerDuration.fixed(d)` always lasts `d`. `MarkerDuration.adaptive(max: d)` follows the time between positions, between 100 ms and `d`. | `fixed`, from `markersAnimationDuration` (2 seconds) |
 
 Every marker moves on its own clock, so a slow marker does not hold back the others.
+
+## Follow a vehicle on a route
+
+For a ride or delivery you already have the route. Give it to the controller together with the marker of the vehicle, and send each GPS position to `updateVehicle`. The position is put on the route, so the marker does not wander off the road, and the route is drawn as the part already travelled and the part still to go.
+
+```dart
+mapAnimationController.trackVehicle(
+  VehicleTracking(
+    markerId: const MarkerId('driver'),
+    route: routePoints, // for example, decoded from a Directions response
+    traveled: const RouteStyle(color: Colors.grey),
+    remaining: const RouteStyle(color: Colors.blue, width: 6),
+    snapToleranceMeters: 30,
+    followRoute: true,
+    onOffRoute: (position) => requestNewRoute(position),
+  ),
+);
+
+// On every GPS update:
+mapAnimationController.updateVehicle(position);
+
+// When the trip ends:
+mapAnimationController.stopTrackingVehicle(const MarkerId('driver'));
+```
+
+| Option | What it does | Default |
+| --- | --- | --- |
+| `snapToleranceMeters` | How far from the route a position can be and still be put on it. | 30 |
+| `followRoute` | The marker takes the route between two positions and turns at the corners, instead of going in a straight line. | `false` |
+| `consumeRoute` | Draws the travelled part with `traveled` (or hides it with `visible: false`) and the rest with `remaining`. When `false`, the whole route keeps the `remaining` style. | `true` |
+| `onOffRoute` | Called with a position farther than the tolerance. The marker goes to that position as it is, and the progress on the route is kept. | none |
+
+- The marker is created at the start of the route if it does not exist. While the vehicle is tracked, `updateMarkers` does not move or remove it.
+- The two lines are polylines with the IDs `<markerId>#traveled` and `<markerId>#remaining`. Do not use those IDs for other polylines.
+- The search for the position starts near the last known one, so a route that crosses itself, or a parallel street, does not make the vehicle jump. If nothing is close, the whole route is searched.
+- With several vehicles, pass the `markerId` to `updateVehicle`.
+- Combine it with `markerAnimationMode: MarkerAnimationMode.latestOnly` for live tracking.
+
+### Dashes that flow: a limitation
+
+Google Maps cannot move the pattern of a dashed line, so `DashFlowAnimator` simulates it by cutting the start of the line a little more on every frame. `dash` and `gap` are drawn in logical pixels (what Google Maps patterns use), but the cut is measured in meters, so the loop is only smooth at the zoom level where one meter is about one pixel (around zoom 17). At other zoom levels the dashes may jump when the cycle restarts. It has not been checked that the pattern stays anchored to the first point on both Android and iOS.
+
+## Colors by section
+
+Draw a route in several colors, for example by traffic. Each segment is a fraction of the route by distance, and the animator is applied to the whole route as if it were one line.
+
+```dart
+AnimatedPolyline.segmented(
+  id: const PolylineId('route'),
+  points: routePoints,
+  segments: const [
+    RouteSegment(from: 0.00, to: 0.35, color: Color(0xFF1E9E5A)),
+    RouteSegment(from: 0.35, to: 0.60, color: Color(0xFFF2A900)),
+    RouteSegment(from: 0.60, to: 0.80, color: Color(0xFFE53935)),
+    RouteSegment(from: 0.80, to: 1.00, color: Color(0xFF1E9E5A)),
+  ],
+  polylineAnimator: const SnackAnimator(), // optional
+)
+```
+
+- Each segment is a polyline with the ID `<id>#<n>`; the ID itself is not drawn. Do not use those IDs for other polylines.
+- Consecutive segments share the point where they meet, so there is no gap. A part of the route that no segment covers is not drawn.
+- From the animator, only the part of the route it leaves visible, and its opacity for fades, are used. The colors come from the segments.
+
+## A camera that follows
+
+Make the camera follow a marker, for example the vehicle you are tracking:
+
+```dart
+mapAnimationController.followCamera(
+  CameraFollow(
+    markerId: const MarkerId('driver'),
+    zoom: 17,
+    tilt: 45,
+    bearing: CameraBearing.vehicle, // or CameraBearing.north
+    onFollowStopped: () => showRecenterButton(),
+  ),
+);
+
+mapAnimationController.stopFollowingCamera();
+```
+
+The camera is moved at most about ten times per second, and the last position is sent when the marker stops. **The package does not receive the gestures on the map by itself.** To stop following when the user moves the map, pass the controller's method to the widget:
+
+```dart
+GoogleMap(
+  onCameraMoveStarted: mapAnimationController.onCameraMoveStarted,
+  // ...
+)
+```
+
+The map also reports the moves the controller makes, so the ones that start right after one of its camera updates are ignored. The user is therefore noticed once the camera has stopped being moved for a moment, for example when the vehicle stops. It has not been checked on devices how each platform reports it.
+
+## Battery and accessibility
+
+- **Background.** By default (`pauseInBackground: true`) polyline animations stop when the app goes to the background and go on from the same place when it comes back. An animation you paused with its handle stays paused. Marker moves are not paused, because they have to show the latest positions.
+- **Reduce motion.** By default (`respectReduceMotion: true`) the controller follows the system setting. When the user asks to reduce motion, polylines are drawn as they are, without animating, and markers and vehicles go to their new position at once. Override `PolylineAnimator.reducedMotionFrame` if your own animation needs something different.
+
+## Control a running animation
+
+Ask the controller for the handle of a polyline to pause it, move it to a point or follow its progress.
+
+```dart
+final animation = mapAnimationController
+    .polylineAnimation(const PolylineId('front'));
+
+animation?.pause();
+animation?.seek(0.5);   // jump to the middle of the cycle
+animation?.resume();
+
+animation?.progress.listen((p) => print(p)); // 0.0 to 1.0
+animation?.onComplete = () => showArrived();
+animation?.onCycle = (cycle) => print('pass $cycle finished');
+```
+
+- `polylineAnimation` returns `null` when that ID has no animation.
+- Progress is the position inside one cycle, in time: it includes `delayStart` and `delayEnd` and is measured before the curve.
+- `seek` on a playing animation keeps it playing from there. On a paused or finished one it stays put until `resume`.
+- `onComplete` is not called for an animation that repeats forever, because it never ends. Use `onCycle` for those. With `reverse`, going and coming back are one pass each, the same as `repeatCount`.
+- The handle stops working when the polyline is removed, its animator is replaced or the controller is disposed.
+
+## Utilities
+
+```dart
+// Decode the route of a Directions response, and fit the camera to it.
+final route = PolylineCodec.decode(response.overviewPolyline);
+controller.animateCamera(
+  CameraUpdate.newLatLngBounds(MapAnimationUtils.boundsOf(route), 50),
+);
+
+// And back to text, with 5 decimals (the default) or 6.
+final text = PolylineCodec.encode(route, precision: 6);
+```
+
+`PolylineCodec` reads and writes the [Encoded Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm). `boundsOf` does not handle routes that cross the 180th meridian.
 
 ## Important: do not reuse IDs in `GoogleMap`
 
