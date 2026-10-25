@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Format, analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format
+        run: dart format --set-exit-if-changed lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Test with coverage
+        run: flutter test --coverage
+      - name: Check coverage is at least 90%
+        run: |
+          python3 - <<'PY'
+          found = hit = 0
+          for line in open("coverage/lcov.info"):
+              if line.startswith("LF:"):
+                  found += int(line[3:])
+              elif line.startswith("LH:"):
+                  hit += int(line[3:])
+          percent = 100 * hit / found
+          print(f"line coverage: {percent:.1f}% ({hit}/{found})")
+          raise SystemExit(0 if percent >= 90 else "coverage below 90%")
+          PY
+      - uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  compatibility:
+    name: Flutter ${{ matrix.flutter }} / ${{ matrix.deps }} dependencies
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter: ['3.22.0', 'stable']
+        deps: [minimum, latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ matrix.flutter != 'stable' && matrix.flutter || '' }}
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: |
+          if [ "${{ matrix.deps }}" = "minimum" ]; then
+            flutter pub downgrade
+          else
+            flutter pub upgrade
+          fi
+      # The example needs a newer SDK than the package, so only lib and test
+      # are analyzed here.
+      - run: flutter analyze lib test
+      - run: flutter test
+
+  publish-dry-run:
+    name: Publish dry run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter pub publish --dry-run
+
+  example-android:
+    name: Build example (Android)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: example
+      - run: flutter build apk --debug
+        working-directory: example

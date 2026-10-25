@@ -1,0 +1,26 @@
+# When this file exists pub ignores .gitignore, so the rules are repeated here.
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+*.iml
+*.ipr
+*.iws
+.idea/
+/pubspec.lock
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+coverage/
+
+# Not part of the package: the demo is linked from the README on GitHub.
+doc/demo.gif
+doc/notes/
+.github/
