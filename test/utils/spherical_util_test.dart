@@ -6,7 +6,7 @@ import 'package:polyline_animation_plus/src/utils/math_util.dart';
 import 'package:polyline_animation_plus/src/utils/spherical_util.dart';
 
 const _origin = LatLng(0, 0);
-final _quarterCircle = SphericalUtil.earthRadius * pi / 2;
+const _quarterCircle = SphericalUtil.earthRadius * pi / 2;
 
 void expectLatLng(LatLng actual, LatLng expected, {double tolerance = 1e-6}) {
   expect(actual.latitude, closeTo(expected.latitude, tolerance));
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('computeOffsetOrigin undoes computeOffset', () {
-      final distance = SphericalUtil.earthRadius * pi / 4;
+      const distance = SphericalUtil.earthRadius * pi / 4;
       final destination = SphericalUtil.computeOffset(_origin, distance, 90);
       final origin =
           SphericalUtil.computeOffsetOrigin(destination, distance, 90);
