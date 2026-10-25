@@ -8,6 +8,8 @@ LatLng _eastOf(double meters) =>
     LatLng(0, meters / SphericalUtil.earthRadius * 180 / 3.141592653589793);
 
 void main() {
+  _boundsTests();
+
   group('generateEquidistantPolylineByDuration', () {
     // Two straight segments of 9 m and 11 m (20 m total). 128 ms at 16 ms per
     // frame is 8 steps, so the spacing is 2.5 m. The junction at 9 m is not a
@@ -56,6 +58,42 @@ void main() {
         duration: const Duration(milliseconds: 128),
       );
       expect(result, same);
+    });
+  });
+}
+
+void _boundsTests() {
+  group('boundsOf', () {
+    test('contains every point', () {
+      final bounds = MapAnimationUtils.boundsOf(const [
+        LatLng(10, 20),
+        LatLng(-5, 30),
+        LatLng(7, -15),
+      ]);
+
+      expect(bounds.southwest, const LatLng(-5, -15));
+      expect(bounds.northeast, const LatLng(10, 30));
+    });
+
+    test('one point gives a box with no size', () {
+      final bounds = MapAnimationUtils.boundsOf(const [LatLng(3, 4)]);
+
+      expect(bounds.southwest, const LatLng(3, 4));
+      expect(bounds.northeast, const LatLng(3, 4));
+    });
+
+    test('works with negative coordinates only', () {
+      final bounds = MapAnimationUtils.boundsOf(const [
+        LatLng(-10, -20),
+        LatLng(-30, -5),
+      ]);
+
+      expect(bounds.southwest, const LatLng(-30, -20));
+      expect(bounds.northeast, const LatLng(-10, -5));
+    });
+
+    test('rejects an empty list', () {
+      expect(() => MapAnimationUtils.boundsOf(const []), throwsArgumentError);
     });
   });
 }
