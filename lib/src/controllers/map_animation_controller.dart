@@ -85,6 +85,10 @@ final class MapAnimationController {
 
   final Map<MarkerId, TrackedVehicle> _vehicles = {};
 
+  /// The extra polylines an animation draws besides the animated polyline
+  /// itself (see PolylineAnimator.animateAll), by animated polyline.
+  final Map<PolylineId, Set<PolylineId>> _extras = {};
+
   final Map<PolylineId, Polyline> _polylines = {};
 
   void _initialize(Set<Marker> markers, Set<AnimatedPolyline> polylines) {
@@ -114,7 +118,7 @@ final class MapAnimationController {
     // Set up the polylines animation manager
     _animatedPolylineManager = AnimatedPolylineManager(
       vsync: vsync,
-      polylineListener: _updatePolyline,
+      polylinesListener: _updateAnimated,
     );
 
     // Add all polylines to animate
@@ -187,18 +191,26 @@ final class MapAnimationController {
 
     // An animated polyline is only on the map after its first frame, but its
     // controller exists from the start, so both must be considered.
-    final vehicleLines = {for (final v in _vehicles.values) ...v.polylineIds};
+    // The lines of a tracked vehicle and the extra polylines of an animation
+    // belong to the package, not to the set the app gives.
+    final owned = {
+      for (final v in _vehicles.values) ...v.polylineIds,
+      for (final extras in _extras.values) ...extras,
+    };
     final oldIds = {
       ..._polylines.keys,
       ..._animatedPolylineManager.activePolylineIds,
-    }..removeAll(vehicleLines);
+    }..removeAll(owned);
     final newIds = newPolyLineById.keys.toSet();
 
     final removedIds = oldIds.difference(newIds);
 
     if (removedIds.isNotEmpty) {
       _animatedPolylineManager.removePolylines(removedIds);
-      _removePolylines(removedIds);
+      _removePolylines({
+        ...removedIds,
+        for (final id in removedIds) ...?_extras.remove(id),
+      });
     }
 
     if (updatedPolylines.isNotEmpty) {
@@ -215,6 +227,8 @@ final class MapAnimationController {
           // Make sure to remove controller, in case it exits before
           // no effect if controller does not exist
           _animatedPolylineManager.removePolyline(poly.polylineId);
+          final extras = _extras.remove(poly.polylineId);
+          if (extras != null) _removePolylines(extras);
         }
       }
     }
@@ -395,6 +409,21 @@ final class MapAnimationController {
     _updateMarkersOnMap(prevMarkers, _markers.values.toSet());
   }
 
+  /// A frame of an animated polyline: the polyline and its extra polylines.
+  void _updateAnimated(PolylineId owner, List<Polyline> polylines) {
+    final ids = {for (final p in polylines) p.polylineId};
+    final extras = ids.difference({owner});
+    final previous = _extras[owner] ?? const <PolylineId>{};
+
+    if (extras.isEmpty) {
+      _extras.remove(owner);
+    } else {
+      _extras[owner] = extras;
+    }
+
+    _applyPolylines(upserts: polylines, removeIds: previous.difference(ids));
+  }
+
   void _updatePolyline(Polyline updatedPolyline) {
     final prevPolylines = Set<Polyline>.from(_polylines.values);
 
@@ -441,5 +470,6 @@ final class MapAnimationController {
     _markers.clear();
     _polylines.clear();
     _vehicles.clear();
+    _extras.clear();
   }
 }

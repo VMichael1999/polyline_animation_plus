@@ -47,7 +47,7 @@ void main() {
         vsync: tester,
         polyline: _line,
         polylineAnimator: animator,
-        polylineListener: (_) {},
+        polylinesListener: (_, __) {},
       );
 
   group('pause and resume', () {
@@ -387,7 +387,7 @@ void main() {
         vsync: tester,
         polyline: _line,
         polylineAnimator: _Stopping(() => stops++),
-        polylineListener: (_) {},
+        polylinesListener: (_, __) {},
       );
       await tester.pump();
       await pumpFor(tester, const Duration(seconds: 2));

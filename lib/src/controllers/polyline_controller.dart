@@ -21,7 +21,11 @@ class PolylineAnimationController implements PolylineAnimationBackend {
   /// The ticker provider that drives the animation
   final TickerProvider vsync;
   final PolylineAnimator polylineAnimator;
-  final void Function(Polyline) polylineListener;
+
+  /// Called on every frame with the animated polyline and the extra polylines
+  /// of the animation, if any. The first argument is the animated polyline.
+  final void Function(PolylineId owner, List<Polyline> polylines)
+      polylinesListener;
   late final AnimationController _controller;
   late final Animation<double> _curvedAnimation;
 
@@ -56,7 +60,7 @@ class PolylineAnimationController implements PolylineAnimationBackend {
     required this.vsync,
     required Polyline polyline,
     required this.polylineAnimator,
-    required this.polylineListener,
+    required this.polylinesListener,
   }) : _polyline = polyline {
     _initialize();
   }
@@ -133,8 +137,10 @@ class PolylineAnimationController implements PolylineAnimationBackend {
     if (_disposed) return;
 
     final progress = _curvedAnimation.value;
-    final animatedPolyline = polylineAnimator.animate(_polyline, progress);
-    polylineListener(animatedPolyline);
+    polylinesListener(
+      _polyline.polylineId,
+      polylineAnimator.animateAll(_polyline, progress),
+    );
 
     if (_progress.hasListener) _progress.add(_controller.value);
 
