@@ -1,103 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:polyline_animation_plus/polyline_animation_plus.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import 'data.dart';
+import 'animators_screen.dart';
+import 'tracking_screen.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
+/// Try the package: a simulated vehicle on a route, and each animator.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: MapScreen(),
+      title: 'polyline_animation_plus',
+      theme: ThemeData(colorSchemeSeed: const Color(0xFF1565C0)),
+      home: const HomeScreen(),
     );
   }
 }
 
-class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
-  GoogleMapController? mapController;
-  MapAnimationController? mapAnimationController;
-
-  final Set<AnimatedPolyline> _polylines = {
-    AnimatedPolyline(
-      polyline: Polyline(
-        polylineId: PolylineId('front'),
-        color: Colors.black,
-        width: 2,
-        points: MapAnimationUtils.generateEquidistantPolylineByDuration(
-          path: coordinates1,
-          duration: const Duration(seconds: 4),
-        ),
-      ),
-      polylineAnimator: FadeInProgressiveAnimator(
-        repeat: true,
-        curve: Curves.linear,
-        duration: const Duration(seconds: 4),
-        delayStart: const Duration(seconds: 1),
-      ),
-    ),
-    AnimatedPolyline(
-      polyline: Polyline(
-        polylineId: PolylineId('back'),
-        color: Colors.grey,
-        width: 2,
-        points: coordinates1,
-      ),
-    ),
-  };
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    mapAnimationController?.dispose();
-    super.dispose();
-  }
+class _HomeScreenState extends State<HomeScreen> {
+  int _index = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Map Screen',
-          style: TextStyle(fontWeight: FontWeight.w500),
-        ),
+      body: IndexedStack(
+        index: _index,
+        children: [
+          // Each screen has its own map; only the visible one is built.
+          if (_index == 0) const TrackingScreen() else const SizedBox(),
+          if (_index == 1) const AnimatorsScreen() else const SizedBox(),
+        ],
       ),
-      body: GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: coordinates1.first,
-          zoom: 16.0,
-        ),
-        onMapCreated: (controller) {
-          mapController = controller;
-          mapAnimationController = MapAnimationController(
-            mapId: controller.mapId,
-            vsync: this,
-            polylines: _polylines,
-          );
-          // Move camera to show the whole polyline
-          final bounds = MapAnimationUtils.boundsOf(coordinates1);
-          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
-        },
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.directions_car),
+            label: 'Vehicle tracking',
+          ),
+          NavigationDestination(icon: Icon(Icons.timeline), label: 'Animators'),
+        ],
       ),
     );
   }
