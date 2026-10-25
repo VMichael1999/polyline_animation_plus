@@ -383,7 +383,13 @@ final class MapAnimationController {
     _animatedMarkersManager.push(
       {marker},
       routes: vehicle.tracking.followRoute
-          ? {vehicle.markerId: RouteTarget(vehicle.path, fix.along!)}
+          ? {
+              vehicle.markerId: RouteTarget(
+                vehicle.path,
+                fix.along!,
+                smoothingMeters: vehicle.tracking.turnSmoothingMeters,
+              ),
+            }
           : const {},
     );
   }

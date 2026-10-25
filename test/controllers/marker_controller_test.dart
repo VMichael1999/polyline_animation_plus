@@ -308,6 +308,29 @@ void main() {
       expect(controller.isMoving, isFalse);
     });
 
+    test('smoothing turns the marker gradually around the corner', () {
+      final controller = start();
+      controller.push(
+        _at(at(100, 100)),
+        timeline: Duration.zero,
+        wallClock: Duration.zero,
+        route: RouteTarget(route, 200, smoothingMeters: 8),
+      );
+
+      // The corner is at 1 s. Around it the rotation is in between.
+      final atCorner = controller.tick(const Duration(seconds: 1))!;
+      expect(atCorner.rotation, closeTo(45, 1));
+      final before = controller.tick(const Duration(milliseconds: 950))!;
+      expect(before.rotation, inExclusiveRange(45, 90));
+      final after = controller.tick(const Duration(milliseconds: 1050))!;
+      expect(after.rotation, inExclusiveRange(0, 45));
+      // Far from the corner it is the heading of the road again.
+      expect(
+        controller.tick(const Duration(milliseconds: 1500))!.rotation,
+        closeTo(0, 1e-6),
+      );
+    });
+
     test('a second move continues from where the first one ended', () {
       final controller = start();
       controller.push(

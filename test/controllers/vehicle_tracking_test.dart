@@ -245,6 +245,50 @@ void main() {
       );
     });
 
+    // Drives through the corner and collects the rotations the marker has.
+    Future<List<double>> rotationsAroundCorner(
+      WidgetTester tester, {
+      required double smoothing,
+    }) async {
+      final controller = create(tester);
+      controller.trackVehicle(
+        VehicleTracking(
+          markerId: _driver,
+          route: route,
+          followRoute: true,
+          turnSmoothingMeters: smoothing,
+        ),
+      );
+      controller.updateVehicle(at(500, 0));
+      await pumpFor(tester, const Duration(milliseconds: 1500));
+
+      controller.updateVehicle(at(1000, 500));
+      final rotations = <double>[];
+      for (var i = 0; i < 24; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+        rotations.add(platform.markers[_driver]!.rotation);
+      }
+      controller.dispose();
+      return rotations;
+    }
+
+    testWidgets('the marker turns gradually at a corner by default', (
+      tester,
+    ) async {
+      final rotations = await rotationsAroundCorner(tester, smoothing: 8);
+
+      expect(rotations.any((r) => r > 10 && r < 80), isTrue);
+      expect(rotations.first, closeTo(90, 1));
+      expect(rotations.last, closeTo(0, 1));
+    });
+
+    testWidgets('turnSmoothingMeters 0 turns at once', (tester) async {
+      final rotations = await rotationsAroundCorner(tester, smoothing: 0);
+
+      expect(rotations.any((r) => r > 10 && r < 80), isFalse);
+      expect(rotations.last, closeTo(0, 1));
+    });
+
     testWidgets('a position far from the route is off route', (tester) async {
       final reported = <LatLng>[];
       final controller = create(tester);

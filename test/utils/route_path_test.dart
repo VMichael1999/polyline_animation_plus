@@ -60,6 +60,31 @@ void main() {
       expect(lRoute.headingAt(999), closeTo(0, 1e-6));
     });
 
+    test('smoothing rounds the corner gradually', () {
+      // The corner is at 100 m: from 92 m to 108 m the heading goes from 90
+      // to 0 instead of jumping.
+      expect(lRoute.headingAt(100, smoothMeters: 8), closeTo(45, 0.5));
+      expect(lRoute.headingAt(80, smoothMeters: 8), closeTo(90, 1e-6));
+      expect(lRoute.headingAt(120, smoothMeters: 8), closeTo(0, 1e-6));
+
+      var previous = 90.0;
+      for (var along = 90.0; along <= 110; along += 1) {
+        final heading = lRoute.headingAt(along, smoothMeters: 8);
+        expect(heading, lessThanOrEqualTo(previous + 1e-9));
+        previous = heading;
+      }
+    });
+
+    test('without smoothing the heading jumps at the corner', () {
+      expect(lRoute.headingAt(99.9), closeTo(90, 1e-6));
+      expect(lRoute.headingAt(100.1), closeTo(0, 1e-6));
+    });
+
+    test('smoothing works near the ends of the route', () {
+      expect(lRoute.headingAt(0, smoothMeters: 8), closeTo(90, 1e-6));
+      expect(lRoute.headingAt(200, smoothMeters: 8), closeTo(0, 1e-6));
+    });
+
     test('segmentAt handles the boundaries', () {
       expect(lRoute.segmentAt(-1), 0);
       expect(lRoute.segmentAt(0), 0);

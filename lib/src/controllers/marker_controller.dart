@@ -16,12 +16,15 @@ import '../utils/spherical_util.dart';
 
 /// A distance along a route that a marker has to reach by following it.
 class RouteTarget {
-  const RouteTarget(this.route, this.along);
+  const RouteTarget(this.route, this.along, {this.smoothingMeters = 0});
 
   final RoutePath route;
 
   /// Meters from the start of [route].
   final double along;
+
+  /// How much the corners of the route are rounded when turning the marker.
+  final double smoothingMeters;
 
   bool sameAs(RouteTarget? other) =>
       other != null &&
@@ -60,6 +63,7 @@ class MarkerController {
   RoutePath? _route;
   double _alongFrom = 0;
   double _alongTo = 0;
+  double _smoothing = 0;
 
   bool _moving = false;
   Duration _start = Duration.zero;
@@ -173,6 +177,7 @@ class MarkerController {
       _route = route.route;
       _alongFrom = from;
       _alongTo = route.along;
+      _smoothing = route.smoothingMeters;
       needsAnimation =
           length > Duration.zero && (route.along - from).abs() >= minMoveMeters;
     } else {
@@ -241,8 +246,9 @@ class MarkerController {
       final along = clamped >= 1
           ? _alongTo
           : _alongFrom + (_alongTo - _alongFrom) * clamped;
-      var rotation =
-          useMarkerRotation ? _target.rotation : route.headingAt(along);
+      var rotation = useMarkerRotation
+          ? _target.rotation
+          : route.headingAt(along, smoothMeters: _smoothing);
       // Going back along the route faces the other way.
       if (!useMarkerRotation && _alongTo < _alongFrom) {
         rotation = (rotation + 180) % 360;
