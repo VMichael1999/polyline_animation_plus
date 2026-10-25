@@ -66,8 +66,12 @@ class AnimatedMarkersManager {
   bool get isAnimating => _controllers.values.any((c) => c.isMoving);
 
   /// Sets the markers to show. New markers appear where they are; known
-  /// markers move to their new state.
-  void push(Set<Marker> markers) {
+  /// markers move to their new state. A marker with an entry in [routes]
+  /// follows that route up to the given distance.
+  void push(
+    Set<Marker> markers, {
+    Map<MarkerId, RouteTarget> routes = const {},
+  }) {
     for (final marker in markers) {
       _markersToBeRemoved.remove(marker.markerId);
 
@@ -86,6 +90,7 @@ class AnimatedMarkersManager {
         marker,
         timeline: _timeline,
         wallClock: _clock(),
+        route: routes[marker.markerId],
       );
       if (immediate != null) _pending[marker.markerId] = immediate;
     }
