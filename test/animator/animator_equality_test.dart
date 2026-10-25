@@ -1,3 +1,6 @@
+// Non-const instances on purpose: equality must not depend on identity.
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:polyline_animation_plus/polyline_animation_plus.dart';

@@ -11,11 +11,12 @@ MarkerController _controller(
   AnimationController animation,
   Marker marker, {
   bool useMarkerRotation = false,
-}) => MarkerController(
-  marker: marker,
-  animationController: animation,
-  useMarkerRotation: useMarkerRotation,
-);
+}) =>
+    MarkerController(
+      marker: marker,
+      animationController: animation,
+      useMarkerRotation: useMarkerRotation,
+    );
 
 void main() {
   late AnimationController animation;
