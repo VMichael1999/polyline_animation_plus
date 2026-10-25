@@ -9,17 +9,23 @@ The route is in `lib/data.dart`.
 
 ## Run it
 
-You need a Google Maps key of your own. In your Google Cloud project enable **Maps SDK for iOS** and/or **Maps SDK for Android**, then put the key in the file that git ignores:
-
-| Platform | Copy | To | And set |
-| --- | --- | --- | --- |
-| iOS | `ios/Flutter/Secrets.xcconfig.example` | `ios/Flutter/Secrets.xcconfig` | `MAPS_API_KEY=...` |
-| Android | `android/secrets.properties.example` | `android/secrets.properties` | `MAPS_API_KEY=...` |
-
-Never commit the key. The two files are in `.gitignore`.
+You need a Google Maps key of your own. In your Google Cloud project enable **Maps SDK for iOS** and/or **Maps SDK for Android**. Then create the file `.env` next to `pubspec.yaml` by copying `.env.example`, and put your key in it:
 
 ```bash
 cd example
+cp .env.example .env
+# edit .env and replace your_key_here with your key
+```
+
+```
+MAPS_API_KEY=your_key_here
+```
+
+- Write it exactly like that: one line, no quotes and no spaces around the `=`. The same file is read by the iOS build (as an `xcconfig`) and by the Android build (as a properties file).
+- Never commit the key. `.env` is in `.gitignore`; `.env.example` is the one that is in the repository.
+- After changing the key, do a clean build (`flutter clean`) so the platform picks it up.
+
+```bash
 flutter run
 ```
 

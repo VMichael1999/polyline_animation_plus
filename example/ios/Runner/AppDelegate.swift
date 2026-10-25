@@ -8,7 +8,7 @@ import GoogleMaps
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // The key comes from ios/Flutter/Secrets.xcconfig, which git ignores.
+    // The key comes from example/.env, which git ignores.
     // Without a key the Maps SDK throws when the map is created, so a
     // placeholder is used: the map then shows no tiles but the app still runs.
     let configured = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String ?? ""

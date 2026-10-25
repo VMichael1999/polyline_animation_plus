@@ -1,3 +1,4 @@
-#include? "Secrets.xcconfig"
+// The Maps key is in example/.env (git ignores it). Its lines are valid here.
+#include? "../../.env"
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"

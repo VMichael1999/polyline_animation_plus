@@ -44,6 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Google Maps API keys: each developer uses their own.
-ios/Flutter/Secrets.xcconfig
-android/secrets.properties
+# The Google Maps API key: each developer uses their own.
+.env
