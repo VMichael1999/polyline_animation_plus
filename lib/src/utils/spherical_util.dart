@@ -95,8 +95,7 @@ class SphericalUtil {
       // No solution which would make sense in LatLng-space.
       return null;
     }
-    final fromLngRadians =
-        MathUtil.toRadians(to.longitude) -
+    final fromLngRadians = MathUtil.toRadians(to.longitude) -
         atan2(n3, n1 * cos(fromLatRadians) - n2 * sin(fromLatRadians));
     return LatLng(
       MathUtil.toDegrees(fromLatRadians).toDouble(),
@@ -153,11 +152,11 @@ class SphericalUtil {
   /// Returns the angle between two LatLngs, in radians. This is the same as the
   /// distance on the unit sphere.
   static num computeAngleBetween(LatLng from, LatLng to) => distanceRadians(
-    MathUtil.toRadians(from.latitude),
-    MathUtil.toRadians(from.longitude),
-    MathUtil.toRadians(to.latitude),
-    MathUtil.toRadians(to.longitude),
-  );
+        MathUtil.toRadians(from.latitude),
+        MathUtil.toRadians(from.longitude),
+        MathUtil.toRadians(to.latitude),
+        MathUtil.toRadians(to.longitude),
+      );
 
   /// Returns the distance between two LatLngs, in meters.
   static num computeDistanceBetween(LatLng from, LatLng to) =>

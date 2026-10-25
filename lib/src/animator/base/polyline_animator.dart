@@ -64,14 +64,14 @@ abstract class PolylineAnimator {
 
   @override
   int get hashCode => Object.hash(
-    duration,
-    curve,
-    repeat,
-    repeatCount,
-    reverse,
-    delayStart,
-    delayEnd,
-  );
+        duration,
+        curve,
+        repeat,
+        repeatCount,
+        reverse,
+        delayStart,
+        delayEnd,
+      );
 
   @override
   String toString() {

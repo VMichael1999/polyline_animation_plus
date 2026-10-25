@@ -9,7 +9,7 @@ import '../utils/spherical_util.dart';
 
 class LocationTween extends Tween<LatLng> {
   LocationTween({required LatLng begin, required LatLng end})
-    : super(begin: begin, end: end);
+      : super(begin: begin, end: end);
 
   @override
   LatLng get begin => super.begin!;

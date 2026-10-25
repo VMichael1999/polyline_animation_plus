@@ -18,21 +18,20 @@ class DelayedCurvedAnimation extends CurvedAnimation {
     this.delayStart = Duration.zero,
     this.delayEnd = Duration.zero,
     Curve curve = Curves.linear,
-  }) : animationDuration = Duration(
-         microseconds:
-             totalDuration.inMicroseconds -
-             delayStart.inMicroseconds -
-             delayEnd.inMicroseconds,
-       ),
-       super(
-         parent: controller,
-         curve: _calculateAnimationInterval(
-           totalDuration,
-           delayStart,
-           delayEnd,
-           curve,
-         ),
-       );
+  })  : animationDuration = Duration(
+          microseconds: totalDuration.inMicroseconds -
+              delayStart.inMicroseconds -
+              delayEnd.inMicroseconds,
+        ),
+        super(
+          parent: controller,
+          curve: _calculateAnimationInterval(
+            totalDuration,
+            delayStart,
+            delayEnd,
+            curve,
+          ),
+        );
 
   static Interval _calculateAnimationInterval(
     Duration totalDuration,

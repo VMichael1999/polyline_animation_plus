@@ -36,15 +36,13 @@ class PolylineAnimationController {
   void _initialize() {
     // The controller must run for the whole cycle (delays included), because
     // DelayedCurvedAnimation computes its interval over that total.
-    final totalDuration =
-        polylineAnimator.duration +
+    final totalDuration = polylineAnimator.duration +
         polylineAnimator.delayStart +
         polylineAnimator.delayEnd;
 
-    _controller =
-        AnimationController(vsync: vsync, duration: totalDuration)
-          ..addListener(_listener)
-          ..addStatusListener(_statusListener);
+    _controller = AnimationController(vsync: vsync, duration: totalDuration)
+      ..addListener(_listener)
+      ..addStatusListener(_statusListener);
 
     if (polylineAnimator.delayStart != Duration.zero ||
         polylineAnimator.delayEnd != Duration.zero) {

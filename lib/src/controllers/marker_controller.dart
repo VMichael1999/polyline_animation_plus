@@ -36,8 +36,8 @@ class MarkerController {
     required Marker marker,
     required AnimationController animationController,
     this.useMarkerRotation = false,
-  }) : _currentMarker = marker,
-       _animationController = animationController {
+  })  : _currentMarker = marker,
+        _animationController = animationController {
     _locationTween = LocationTween(
       begin: marker.position,
       end: marker.position,
@@ -66,7 +66,7 @@ class MarkerController {
   void _setupTo(Marker m) {
     final moved =
         SphericalUtil.computeDistanceBetween(_locationTween.end, m.position) >=
-        minMoveMeters;
+            minMoveMeters;
 
     _currentMarker = m;
     _locationTween.swap(m.position);

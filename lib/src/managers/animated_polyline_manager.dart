@@ -26,8 +26,8 @@ class AnimatedPolylineManager {
   AnimatedPolylineManager({
     required TickerProvider vsync,
     required PolylineListener polylineListener,
-  }) : _vsync = vsync,
-       _listener = polylineListener;
+  })  : _vsync = vsync,
+        _listener = polylineListener;
 
   List<PolylineId> get activePolylineIds => _controllers.keys.toList();
 
