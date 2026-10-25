@@ -121,6 +121,12 @@ Todos comparten estas opciones: `duration`, `curve`, `repeat`, `repeatCount`, `r
 | `PulseAnimator` | Una luz recorre una copia atenuada de la ruta, para una espera de «buscando conductor». También dibuja una polyline con el ID `<id>#glow`. |
 | `DashFlowAnimator` | Una línea punteada cuyos tramos avanzan por la ruta. Mira su limitación más abajo. |
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/pulse.gif" width="420" alt="Una luz que recorre una ruta atenuada" />
+  <br>
+  <em><code>PulseAnimator</code>: una luz que recorre una copia atenuada de la ruta.</em>
+</p>
+
 ## Crea tu propio animator
 
 Extiende `PolylineAnimator` y devuelve la polyline a dibujar para un `progress` dado (de 0 a 1):
@@ -191,6 +197,12 @@ Cada marcador se mueve con su propio reloj, así que uno lento no frena a los de
 
 ## Sigue a un vehículo por una ruta
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/vehicle_tracking.gif" width="260" alt="Un carro siguiendo una ruta en un mapa que gira con él" />
+  <br>
+  <em>El carro se ajusta a la ruta, gira en las esquinas y la cámara lo sigue. El mapa gira un poco después que el carro, así que en una curva se ve el carro de lado.</em>
+</p>
+
 Para un viaje o una entrega ya tienes la ruta. Pásasela al controlador junto con el marcador del vehículo y envía cada posición del GPS a `updateVehicle`. La posición se ajusta a la ruta, así el marcador no se sale de la calle, y la ruta se dibuja como la parte ya recorrida y la parte que falta.
 
 ```dart
@@ -231,6 +243,12 @@ mapAnimationController.stopTrackingVehicle(const MarkerId('driver'));
 Google Maps no puede mover el patrón de una línea punteada, así que `DashFlowAnimator` lo simula recortando el inicio de la línea un poco más en cada frame. `dash` y `gap` se dibujan en píxeles lógicos (lo que usan los patrones de Google Maps), pero el recorte se mide en metros, así que el bucle solo es suave en el nivel de zoom donde un metro equivale a un píxel (alrededor del zoom 17). En otros niveles los tramos pueden dar un salto al reiniciar el ciclo. No se ha comprobado que el patrón quede anclado al primer punto en Android y en iOS.
 
 ## Colores por tramo
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/segmented_route.gif" width="420" alt="Una ruta en verde, ámbar y rojo que aparece y se desvanece" />
+  <br>
+  <em>Una ruta en varios colores. Aquí con un animator de desvanecido, aplicado a toda la ruta.</em>
+</p>
 
 Dibuja una ruta en varios colores, por ejemplo según el tráfico. Cada segmento es una fracción de la ruta por distancia, y el animator se aplica a toda la ruta como si fuera una sola línea.
 
@@ -309,6 +327,12 @@ Guarda `rumboDelMapa` desde `GoogleMap.onCameraMove`. La app de `example` lo hac
 - **Reducir movimiento.** Por defecto (`respectReduceMotion: true`) el controlador sigue el ajuste del sistema. Cuando el usuario pide reducir el movimiento, las polylines se dibujan tal cual, sin animar, y los marcadores y vehículos van a su nueva posición de inmediato. Sobrescribe `PolylineAnimator.reducedMotionFrame` si tu propia animación necesita algo distinto.
 
 ## Controla una animación en marcha
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/animation_control.gif" width="300" alt="Pausar una animación de polyline y saltar a un punto con un deslizador" />
+  <br>
+  <em>Pausar, reanudar y saltar con el <code>PolylineAnimationHandle</code>.</em>
+</p>
 
 Pídele al controlador el handle de una polyline para pausarla, llevarla a un punto o seguir su progreso.
 
