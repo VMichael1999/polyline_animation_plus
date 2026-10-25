@@ -62,12 +62,14 @@ jobs:
           cache: true
       # The example needs a newer SDK than the package, so it is left out of
       # dependency resolution (--no-example) and only lib and test are checked.
+      # `dart pub` is used because `flutter pub upgrade` still tries to prepare
+      # the example afterwards and fails when example/.dart_tool is missing.
       - name: Resolve dependencies
         run: |
           if [ "${{ matrix.deps }}" = "minimum" ]; then
-            flutter pub downgrade --no-example
+            dart pub downgrade --no-example
           else
-            flutter pub upgrade --no-example
+            dart pub upgrade --no-example
           fi
       - run: flutter analyze --no-pub lib test
       - run: flutter test --no-pub
