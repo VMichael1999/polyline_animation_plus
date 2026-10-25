@@ -5,14 +5,21 @@
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:polyline_animation_plus/src/utils/spherical_util.dart';
 
-/// Generates points spaced dynamically based on duration
-
+/// Helpers to prepare data for animations.
 final class MapAnimationUtils {
   MapAnimationUtils._();
 
   /// Tolerance used to absorb floating point error when comparing distances.
   static const _epsilonMeters = 1e-6;
 
+  /// Returns points along [path] that are the same distance apart, so a
+  /// progressive animation moves at a constant speed on the map.
+  ///
+  /// The spacing is the length of the path divided by the number of frames
+  /// that fit in [duration] ([frameIntervalMs] per frame). The result starts at
+  /// the first point of [path] and ends at its last point; the last gap can be
+  /// shorter than the others. A [path] with fewer than two points, or a
+  /// zero [duration], is returned unchanged.
   static List<LatLng> generateEquidistantPolylineByDuration({
     required List<LatLng> path,
     required Duration duration,

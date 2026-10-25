@@ -7,9 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:polyline_animation_plus/src/animator/base/polyline_animator.dart';
 
+/// Changes the color of the polyline smoothly through [colors], one after
+/// the other, and back to the first one.
+///
+/// The points are not modified. [colors] must not be empty.
 class ColorTransitionAnimation extends PolylineAnimator {
+  /// Colors the polyline goes through, in order.
   final List<Color> colors;
 
+  /// Creates a color transition through [colors].
   const ColorTransitionAnimation({
     required this.colors,
     super.duration = const Duration(seconds: 5),

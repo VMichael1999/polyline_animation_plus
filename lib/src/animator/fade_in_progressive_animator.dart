@@ -6,7 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:polyline_animation_plus/src/animator/base/polyline_animator.dart';
 
+/// Fades the polyline in during the first 30% of the animation and then
+/// erases it from its start to its end during the remaining 70%.
 class FadeInProgressiveAnimator extends PolylineAnimator {
+  /// Creates a fade-in animator that repeats by default.
   const FadeInProgressiveAnimator({
     super.duration = const Duration(seconds: 5),
     super.curve = Curves.ease,
