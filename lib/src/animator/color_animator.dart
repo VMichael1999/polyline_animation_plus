@@ -6,8 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:polyline_animation_plus/src/animator/base/polyline_animator.dart';
 
-
-
 class ColorTransitionAnimation extends PolylineAnimator {
   final List<Color> colors;
 
@@ -32,8 +30,6 @@ class ColorTransitionAnimation extends PolylineAnimator {
       colorProgress,
     );
 
-    return polyline.copyWith(
-      colorParam: interpolatedColor,
-    );
+    return polyline.copyWith(colorParam: interpolatedColor);
   }
 }

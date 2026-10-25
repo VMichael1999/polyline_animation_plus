@@ -5,17 +5,13 @@
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:polyline_animation_plus/src/animator/base/polyline_animator.dart';
 
-
 class AnimatedPolyline {
   final Polyline polyline;
 
   // If null, the polyline consider as satic.
   final PolylineAnimator? polylineAnimator;
 
-  const AnimatedPolyline({
-    required this.polyline,
-    this.polylineAnimator,
-  });
+  const AnimatedPolyline({required this.polyline, this.polylineAnimator});
 
   @override
   bool operator ==(Object other) {

@@ -19,11 +19,19 @@ class DelayedCurvedAnimation extends CurvedAnimation {
     this.delayEnd = Duration.zero,
     Curve curve = Curves.linear,
   }) : animationDuration = Duration(
-         microseconds: totalDuration.inMicroseconds - delayStart.inMicroseconds - delayEnd.inMicroseconds,
+         microseconds:
+             totalDuration.inMicroseconds -
+             delayStart.inMicroseconds -
+             delayEnd.inMicroseconds,
        ),
        super(
          parent: controller,
-         curve: _calculateAnimationInterval(totalDuration, delayStart, delayEnd, curve),
+         curve: _calculateAnimationInterval(
+           totalDuration,
+           delayStart,
+           delayEnd,
+           curve,
+         ),
        );
 
   static Interval _calculateAnimationInterval(
@@ -35,7 +43,8 @@ class DelayedCurvedAnimation extends CurvedAnimation {
     final totalMicroseconds = totalDuration.inMicroseconds;
 
     // Validation
-    if (delayStart.inMicroseconds + delayEnd.inMicroseconds >= totalMicroseconds) {
+    if (delayStart.inMicroseconds + delayEnd.inMicroseconds >=
+        totalMicroseconds) {
       throw ArgumentError(
         'Combined delays (${delayStart.inMilliseconds}ms + ${delayEnd.inMilliseconds}ms) '
         'cannot exceed total duration (${totalDuration.inMilliseconds}ms)',
@@ -62,8 +71,11 @@ class DelayedCurvedAnimation extends CurvedAnimation {
     return math.max(0.0, math.min(1.0, (value - startRatio) / animationRatio));
   }
 
-  bool get isInStartDelay => parent.value < (delayStart.inMicroseconds / totalDuration.inMicroseconds);
-  bool get isInEndDelay => parent.value > (1 - delayEnd.inMicroseconds / totalDuration.inMicroseconds);
+  bool get isInStartDelay =>
+      parent.value < (delayStart.inMicroseconds / totalDuration.inMicroseconds);
+  bool get isInEndDelay =>
+      parent.value >
+      (1 - delayEnd.inMicroseconds / totalDuration.inMicroseconds);
 
   @override
   bool get isAnimating => !isInStartDelay && !isInEndDelay;

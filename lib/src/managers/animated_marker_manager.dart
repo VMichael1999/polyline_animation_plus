@@ -17,9 +17,10 @@ class AnimatedMarkersManager {
     // 16.67 ms per frame for 60 FPS (1000 ms / 60 FPS) ~= 16.67 ms
     totalFrames = (duration.inMilliseconds / 16.67).round();
 
-    _animationController = AnimationController(vsync: vsync, duration: duration)
-      ..addStatusListener(_statusListener)
-      ..addListener(listener);
+    _animationController =
+        AnimationController(vsync: vsync, duration: duration)
+          ..addStatusListener(_statusListener)
+          ..addListener(listener);
   }
 
   late final int totalFrames;
@@ -38,10 +39,11 @@ class AnimatedMarkersManager {
 
   void push(Set<Marker> markers) {
     for (var marker in markers) {
-      final controller = _controllers[marker.markerId] ??= MarkerController(
-        marker: marker,
-        animationController: _animationController,
-      );
+      final controller =
+          _controllers[marker.markerId] ??= MarkerController(
+            marker: marker,
+            animationController: _animationController,
+          );
 
       controller.pushToQueue(marker);
     }

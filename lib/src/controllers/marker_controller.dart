@@ -33,10 +33,7 @@ class MarkerController {
       end: marker.position,
     );
 
-    _bearingTween = BearingTween(
-      begin: marker.rotation,
-      end: marker.rotation,
-    );
+    _bearingTween = BearingTween(begin: marker.rotation, end: marker.rotation);
 
     _locationTween.animate(_animationController);
     _bearingTween.animate(_animationController);

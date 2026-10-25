@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:polyline_animation_plus/src/animator/base/polyline_animator.dart';
 
-
 class SnackAnimator extends PolylineAnimator {
   const SnackAnimator({
     super.duration = const Duration(seconds: 2),
