@@ -1,25 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:polyline_animation_plus/polyline_animation_plus.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-// ignore: depend_on_referenced_packages
-import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
-import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 
 import 'data.dart';
 
-void main() async {
-  final GoogleMapsFlutterPlatform mapsImplementation =
-      GoogleMapsFlutterPlatform.instance;
-  try {
-    if (mapsImplementation is GoogleMapsFlutterAndroid) {
-      WidgetsFlutterBinding.ensureInitialized();
-      await mapsImplementation.initializeWithRenderer(
-        AndroidMapRenderer.legacy,
-      );
-    }
-  } catch (e) {
-    debugPrint('Error initializing Google Maps: $e');
-  }
+void main() {
   runApp(const MyApp());
 }
 
