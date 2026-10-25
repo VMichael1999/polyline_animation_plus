@@ -121,6 +121,12 @@ All animators share these options: `duration`, `curve`, `repeat`, `repeatCount`,
 | `PulseAnimator` | A light travels along a dimmed copy of the route, for a "looking for a driver" wait. It also draws a polyline with the ID `<id>#glow`. |
 | `DashFlowAnimator` | A dashed line whose dashes flow along the route. See its limitation below. |
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/pulse.gif" width="420" alt="A light that travels along a dimmed route" />
+  <br>
+  <em><code>PulseAnimator</code>: a light that travels along a dimmed copy of the route.</em>
+</p>
+
 ## Create your own animator
 
 Extend `PolylineAnimator` and return the polyline to draw for a given `progress` (from 0 to 1):
@@ -191,6 +197,12 @@ Every marker moves on its own clock, so a slow marker does not hold back the oth
 
 ## Follow a vehicle on a route
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/vehicle_tracking.gif" width="260" alt="A car following a route on a map that turns with it" />
+  <br>
+  <em>The car is put on the route, turns at the corners, and the camera follows it. The map turns a little later than the car, so in a curve you see the car from the side.</em>
+</p>
+
 For a ride or delivery you already have the route. Give it to the controller together with the marker of the vehicle, and send each GPS position to `updateVehicle`. The position is put on the route, so the marker does not wander off the road, and the route is drawn as the part already travelled and the part still to go.
 
 ```dart
@@ -231,6 +243,12 @@ mapAnimationController.stopTrackingVehicle(const MarkerId('driver'));
 Google Maps cannot move the pattern of a dashed line, so `DashFlowAnimator` simulates it by cutting the start of the line a little more on every frame. `dash` and `gap` are drawn in logical pixels (what Google Maps patterns use), but the cut is measured in meters, so the loop is only smooth at the zoom level where one meter is about one pixel (around zoom 17). At other zoom levels the dashes may jump when the cycle restarts. It has not been checked that the pattern stays anchored to the first point on both Android and iOS.
 
 ## Colors by section
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/segmented_route.gif" width="420" alt="A route in green, amber and red that fades in and out" />
+  <br>
+  <em>A route in several colors. Here with a fade animator, applied to the whole route.</em>
+</p>
 
 Draw a route in several colors, for example by traffic. Each segment is a fraction of the route by distance, and the animator is applied to the whole route as if it were one line.
 
@@ -309,6 +327,12 @@ Keep `mapBearing` from `GoogleMap.onCameraMove`. The `example` app does this, an
 - **Reduce motion.** By default (`respectReduceMotion: true`) the controller follows the system setting. When the user asks to reduce motion, polylines are drawn as they are, without animating, and markers and vehicles go to their new position at once. Override `PolylineAnimator.reducedMotionFrame` if your own animation needs something different.
 
 ## Control a running animation
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VMichael1999/polyline_animation_plus/main/doc/media/animation_control.gif" width="300" alt="Pausing a polyline animation and jumping to a point with a slider" />
+  <br>
+  <em>Pause, resume and seek with the <code>PolylineAnimationHandle</code>.</em>
+</p>
 
 Ask the controller for the handle of a polyline to pause it, move it to a point or follow its progress.
 

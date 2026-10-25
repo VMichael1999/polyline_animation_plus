@@ -27,3 +27,6 @@ doc/notes/
 # The pictures of the car of the example (1.5 MB): they can be made again with
 # example/tool/make_car_sprites.py.
 example/assets/car_3d/
+# The pictures of the README and the scripts that made them.
+doc/media/
+tool/
