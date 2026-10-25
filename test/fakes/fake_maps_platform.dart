@@ -10,6 +10,9 @@ class FakeMapsPlatform extends GoogleMapsFlutterPlatform
   final markers = <MarkerId, Marker>{};
   final polylines = <PolylineId, Polyline>{};
 
+  /// The camera moves, as JSON.
+  final cameraMoves = <Object>[];
+
   int markerUpdateCalls = 0;
   int polylineUpdateCalls = 0;
   final mapIds = <int>{};
@@ -42,5 +45,11 @@ class FakeMapsPlatform extends GoogleMapsFlutterPlatform
       polylines[p.polylineId] = p;
     }
     polylineUpdates.polylineIdsToRemove.forEach(polylines.remove);
+  }
+
+  @override
+  Future<void> moveCamera(CameraUpdate cameraUpdate,
+      {required int mapId}) async {
+    cameraMoves.add(cameraUpdate.toJson());
   }
 }

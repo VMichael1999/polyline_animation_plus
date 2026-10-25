@@ -8,9 +8,11 @@ import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platf
 import '../managers/animated_marker_manager.dart';
 import '../managers/animated_polyline_manager.dart';
 import '../model/animated_polyline.dart';
+import '../model/camera_follow.dart';
 import '../model/marker_animation.dart';
 import '../model/polyline_animation_handle.dart';
 import '../model/vehicle_tracking.dart';
+import 'camera_follower.dart';
 import 'marker_controller.dart';
 import 'tracked_vehicle.dart';
 import 'vehicle_tracker.dart';
@@ -84,6 +86,8 @@ final class MapAnimationController {
   final Map<MarkerId, Marker> _markers = {};
 
   final Map<MarkerId, TrackedVehicle> _vehicles = {};
+
+  CameraFollower? _camera;
 
   /// The extra polylines an animation draws besides the animated polyline
   /// itself (see PolylineAnimator.animateAll), by animated polyline.
@@ -262,6 +266,59 @@ final class MapAnimationController {
     _drawRoute(vehicle, 0);
   }
 
+  /// Makes the camera follow a marker, for example the vehicle that is tracked.
+  ///
+  /// The camera moves after the marker as it is shown, at most about ten times
+  /// per second, and starts by going to where the marker is now. Following a
+  /// marker again replaces the previous one.
+  ///
+  /// The package does not receive the gestures on the map by itself. To stop
+  /// following when the user moves the map, pass [onCameraMoveStarted] to the
+  /// `GoogleMap` widget:
+  ///
+  /// ```dart
+  /// GoogleMap(onCameraMoveStarted: mapAnimationController.onCameraMoveStarted)
+  /// ```
+  void followCamera(CameraFollow follow) {
+    _camera?.dispose();
+    final camera = CameraFollower(
+      follow: follow,
+      moveCamera: (update) => GoogleMapsFlutterPlatform.instance.moveCamera(
+        update,
+        mapId: mapId,
+      ),
+      now: CameraFollower.createClock(),
+    );
+    _camera = camera;
+
+    final marker = _markers[follow.markerId];
+    if (marker != null) camera.onMarker(marker);
+  }
+
+  /// Stops following with the camera. Does nothing if it is not following.
+  void stopFollowingCamera() {
+    _camera?.dispose();
+    _camera = null;
+  }
+
+  /// Tells the controller that the camera of the map started to move, to stop
+  /// following when the user moved the map.
+  ///
+  /// Pass it to `GoogleMap.onCameraMoveStarted`. The map reports the moves the
+  /// controller makes too, so the ones that start right after one of its camera
+  /// updates are ignored. This means the user is only noticed once the camera
+  /// has stopped being moved for a moment, for example when the vehicle stops.
+  /// It has not been checked on devices how each platform reports it.
+  ///
+  /// When it stops the following, [CameraFollow.onFollowStopped] is called.
+  void onCameraMoveStarted() {
+    final camera = _camera;
+    if (camera == null || !camera.onCameraMoveStarted()) return;
+
+    _camera = null;
+    camera.follow.onFollowStopped?.call();
+  }
+
   /// Gives the new position of a tracked vehicle, for example from the GPS.
   ///
   /// If the position is within [VehicleTracking.snapToleranceMeters] of the
@@ -406,6 +463,13 @@ final class MapAnimationController {
 
     if (_vehicles.isNotEmpty) updatedMarkers.forEach(_followShownMarker);
 
+    final camera = _camera;
+    if (camera != null) {
+      for (final marker in updatedMarkers) {
+        if (marker.markerId == camera.follow.markerId) camera.onMarker(marker);
+      }
+    }
+
     _updateMarkersOnMap(prevMarkers, _markers.values.toSet());
   }
 
@@ -471,5 +535,7 @@ final class MapAnimationController {
     _polylines.clear();
     _vehicles.clear();
     _extras.clear();
+    _camera?.dispose();
+    _camera = null;
   }
 }
