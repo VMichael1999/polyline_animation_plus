@@ -206,6 +206,31 @@ void main() {
       controller.dispose();
     });
 
+    testWidgets('removes an animated polyline before its first frame', (
+      tester,
+    ) async {
+      final controller = create(
+        tester,
+        polylines: {
+          AnimatedPolyline(
+            polyline: _line(_p1),
+            polylineAnimator: const SnackAnimator(
+              duration: Duration(seconds: 2),
+              repeat: true,
+            ),
+          ),
+        },
+      );
+
+      // No frame has been drawn yet, so the map does not know the polyline.
+      controller.updatePolylines({});
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(platform.polylines, isEmpty);
+      controller.dispose();
+    });
+
     testWidgets('updateStaticPolyline draws the given polyline', (
       tester,
     ) async {

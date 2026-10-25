@@ -162,7 +162,12 @@ final class MapAnimationController {
       updatedPolylines.map((p) => p.polyline),
     );
 
-    final oldIds = _polylines.keys.toSet();
+    // An animated polyline is only on the map after its first frame, but its
+    // controller exists from the start, so both must be considered.
+    final oldIds = {
+      ..._polylines.keys,
+      ..._animatedPolylineManager.activePolylineIds,
+    };
     final newIds = newPolyLineById.keys.toSet();
 
     final removedIds = oldIds.difference(newIds);
