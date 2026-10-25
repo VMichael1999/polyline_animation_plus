@@ -47,7 +47,7 @@ Animaciones fluidas y personalizables de polylines y marcadores sobre Google Map
 
 ```yaml
 dependencies:
-  polyline_animation_plus: ^1.0.4
+  polyline_animation_plus: ^1.1.0
 ```
 
 ```dart

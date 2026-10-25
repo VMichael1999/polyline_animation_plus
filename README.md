@@ -47,7 +47,7 @@ Smooth, customizable polyline and marker animations for Google Maps in Flutter. 
 
 ```yaml
 dependencies:
-  polyline_animation_plus: ^1.0.4
+  polyline_animation_plus: ^1.1.0
 ```
 
 ```dart
