@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -23,6 +25,15 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // The Google Maps key comes from example/.env, which git ignores.
+        // Without it the app still builds, but the map stays blank.
+        val env = Properties()
+        val envFile = rootProject.file("../.env")
+        if (envFile.exists()) {
+            envFile.inputStream().use { env.load(it) }
+        }
+        manifestPlaceholders["MAPS_API_KEY"] = env.getProperty("MAPS_API_KEY", "")
     }
 
     buildTypes {

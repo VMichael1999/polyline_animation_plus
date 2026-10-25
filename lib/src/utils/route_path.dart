@@ -120,7 +120,18 @@ class RoutePath {
   }
 
   /// Heading in degrees of the route at [along].
-  double headingAt(double along) {
+  ///
+  /// With [smoothMeters] the corners are rounded: the heading is the one of
+  /// the line from the point that many meters behind to the point that many
+  /// meters ahead, so it changes gradually over `2 * smoothMeters` around a
+  /// corner instead of jumping.
+  double headingAt(double along, {double smoothMeters = 0}) {
+    if (smoothMeters > 0) {
+      final from = pointAt(along - smoothMeters);
+      final to = pointAt(along + smoothMeters);
+      if (from != to) return SphericalUtil.computeHeading(from, to).toDouble();
+    }
+
     final segment = segmentAt(along);
     return SphericalUtil.computeHeading(
       points[segment],

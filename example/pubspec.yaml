@@ -24,4 +24,8 @@ flutter:
 
   uses-material-design: true
 
+  assets:
+    - assets/car.png
+    - assets/car_3d/
+
 

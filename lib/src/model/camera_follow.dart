@@ -17,6 +17,7 @@ final class CameraFollow {
     this.zoom = 17,
     this.tilt = 0,
     this.bearing = CameraBearing.north,
+    this.bearingLag = const Duration(milliseconds: 600),
     this.onFollowStopped,
   });
 
@@ -31,6 +32,13 @@ final class CameraFollow {
 
   /// Whether the map turns with the marker or keeps north up.
   final CameraBearing bearing;
+
+  /// How long the map takes to catch up with the direction of the vehicle when
+  /// [bearing] is [CameraBearing.vehicle]. With a lag the vehicle turns a little
+  /// before the map does, so in a curve you see it from the side instead of
+  /// always from behind, like in navigation apps. [Duration.zero] turns the map
+  /// at once.
+  final Duration bearingLag;
 
   /// Called when the camera stops following because the user moved the map.
   ///

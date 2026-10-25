@@ -24,6 +24,15 @@ typedef PolylineListener = void Function(Polyline);
 /// Called with the markers that were just updated on the map.
 typedef MarkerListener = void Function(Set<Marker>);
 
+/// Changes a marker just before it is drawn, on every frame of its animation.
+///
+/// It receives the marker as the animation computed it (with its position and
+/// rotation) and returns the marker to draw. Use it to change what depends on
+/// the animation, for example to pick an icon for the direction the marker is
+/// facing. The animation itself, the listeners and the camera keep using the
+/// marker without the changes.
+typedef MarkerFrameBuilder = Marker Function(Marker marker);
+
 /// Animates polylines and markers on a Google Map.
 ///
 /// It draws directly on the map with the given [mapId], so the `GoogleMap`
@@ -55,6 +64,10 @@ final class MapAnimationController {
   /// Use [MarkerDuration.adaptive] to make every move last as long as the time
   /// between positions, which suits live GPS updates.
   final MarkerDuration? markerDuration;
+
+  /// Changes each marker just before it is drawn, on every frame. See
+  /// [MarkerFrameBuilder].
+  final MarkerFrameBuilder? markerFrameBuilder;
 
   /// Whether the polyline animations pause when the app goes to the background
   /// and go on from the same place when it comes back. Default is true.
@@ -90,6 +103,7 @@ final class MapAnimationController {
     this.markerAnimationMode = MarkerAnimationMode.queue,
     this.pauseInBackground = true,
     this.respectReduceMotion = true,
+    this.markerFrameBuilder,
   }) {
     _initialize(markers, polylines);
   }
@@ -108,7 +122,13 @@ final class MapAnimationController {
   /// Manager responsible for animating polyline drawing and updates
   late final AnimatedPolylineManager _animatedPolylineManager;
 
+  /// What is drawn on the map, after [markerFrameBuilder].
   final Map<MarkerId, Marker> _markers = {};
+
+  /// The markers as the animations compute them, without [markerFrameBuilder].
+  final Map<MarkerId, Marker> _rawMarkers = {};
+
+  Marker _styled(Marker marker) => markerFrameBuilder?.call(marker) ?? marker;
 
   final Map<MarkerId, TrackedVehicle> _vehicles = {};
 
@@ -135,10 +155,13 @@ final class MapAnimationController {
     // The initial markers are drawn directly on the map; the manager only
     // needs to know them so that later updates can move them.
 
-    _markers.addAll(keyByMarkerId(markers));
-    final markerSet = _markers.values.toSet();
+    final markerSet = keyByMarkerId(markers).values.toSet();
+    for (final marker in markerSet) {
+      _rawMarkers[marker.markerId] = marker;
+      _markers[marker.markerId] = _styled(marker);
+    }
 
-    _updateMarkersOnMap({}, markerSet);
+    _updateMarkersOnMap({}, _markers.values.toSet());
 
     // Set up the markers animation manager
     _animatedMarkersManager = AnimatedMarkersManager(
@@ -290,7 +313,7 @@ final class MapAnimationController {
     stopTrackingVehicle(tracking.markerId);
 
     final id = tracking.markerId;
-    final base = _markers[id];
+    final base = _rawMarkers[id];
     final vehicle = TrackedVehicle(
       tracking,
       base ?? Marker(markerId: id, position: tracking.route.first),
@@ -329,7 +352,7 @@ final class MapAnimationController {
     );
     _camera = camera;
 
-    final marker = _markers[follow.markerId];
+    final marker = _rawMarkers[follow.markerId];
     if (marker != null) camera.onMarker(marker);
   }
 
@@ -383,7 +406,13 @@ final class MapAnimationController {
     _animatedMarkersManager.push(
       {marker},
       routes: vehicle.tracking.followRoute
-          ? {vehicle.markerId: RouteTarget(vehicle.path, fix.along!)}
+          ? {
+              vehicle.markerId: RouteTarget(
+                vehicle.path,
+                fix.along!,
+                smoothingMeters: vehicle.tracking.turnSmoothingMeters,
+              ),
+            }
           : const {},
     );
   }
@@ -486,6 +515,7 @@ final class MapAnimationController {
 
     for (final markerId in markerIds) {
       _markers.remove(markerId);
+      _rawMarkers.remove(markerId);
     }
     _updateMarkersOnMap(prevMarkers, _markers.values.toSet());
   }
@@ -494,7 +524,8 @@ final class MapAnimationController {
     final prevMarkers = Set<Marker>.from(_markers.values);
 
     for (final marker in updatedMarkers) {
-      _markers[marker.markerId] = marker;
+      _rawMarkers[marker.markerId] = marker;
+      _markers[marker.markerId] = _styled(marker);
     }
 
     // Notify external listeners
@@ -571,6 +602,7 @@ final class MapAnimationController {
     _animatedMarkersManager.dispose();
     _animatedPolylineManager.dispose();
     _markers.clear();
+    _rawMarkers.clear();
     _polylines.clear();
     _vehicles.clear();
     _extras.clear();

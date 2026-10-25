@@ -100,7 +100,11 @@ void main() {
   testWidgets('turns with the vehicle when asked to', (tester) async {
     final controller = create(tester);
     controller.followCamera(
-      const CameraFollow(markerId: _driver, bearing: CameraBearing.vehicle),
+      const CameraFollow(
+        markerId: _driver,
+        bearing: CameraBearing.vehicle,
+        bearingLag: Duration.zero,
+      ),
     );
     platform.cameraMoves.clear();
 
@@ -111,6 +115,132 @@ void main() {
 
     expect(cameraOf(platform.cameraMoves.last)['bearing'], closeTo(90, 1e-6));
     controller.dispose();
+  });
+
+  group('bearing lag', () {
+    double bearingOf(Object move) => cameraOf(move)['bearing']! as double;
+
+    testWidgets('the map turns after the vehicle', (tester) async {
+      final controller = create(tester);
+      controller.followCamera(
+        const CameraFollow(
+          markerId: _driver,
+          bearing: CameraBearing.vehicle,
+          bearingLag: Duration(milliseconds: 600),
+        ),
+      );
+      platform.cameraMoves.clear();
+
+      // The marker turns from 0 to 90 during one second.
+      controller.updateMarkers({_marker(at(100, 0))});
+      await tester.pump();
+      await pumpFor(tester, const Duration(seconds: 1));
+
+      // The vehicle has finished turning but the map is still catching up.
+      expect(bearingOf(platform.cameraMoves.last), lessThan(80));
+      expect(bearingOf(platform.cameraMoves.last), greaterThan(20));
+      controller.dispose();
+    });
+
+    testWidgets('and it catches up even if the marker stops', (tester) async {
+      final controller = create(tester);
+      controller.followCamera(
+        const CameraFollow(
+          markerId: _driver,
+          bearing: CameraBearing.vehicle,
+          bearingLag: Duration(milliseconds: 600),
+        ),
+      );
+      platform.cameraMoves.clear();
+
+      controller.updateMarkers({_marker(at(100, 0))});
+      await tester.pump();
+      await pumpFor(tester, const Duration(seconds: 6));
+
+      expect(bearingOf(platform.cameraMoves.last), closeTo(90, 0.6));
+
+      // Once there it stops sending updates.
+      final moves = platform.cameraMoves.length;
+      await pumpFor(tester, const Duration(seconds: 2));
+      expect(platform.cameraMoves.length, moves);
+      controller.dispose();
+    });
+
+    testWidgets('never goes the long way round', (tester) async {
+      final updates = <CameraUpdate>[];
+      var time = Duration.zero;
+      final follower = CameraFollower(
+        follow: const CameraFollow(
+          markerId: _driver,
+          bearing: CameraBearing.vehicle,
+          bearingLag: Duration(milliseconds: 600),
+        ),
+        moveCamera: updates.add,
+        now: () => time,
+      );
+
+      follower.onMarker(
+        Marker(markerId: _driver, position: at(0, 0), rotation: 350),
+      );
+      time = const Duration(milliseconds: 200);
+      follower.onMarker(
+        Marker(markerId: _driver, position: at(0, 0), rotation: 10),
+      );
+      follower.dispose();
+
+      final bearings = [
+        for (final update in updates) bearingOf(update.toJson()),
+      ];
+      expect(bearings.first, 350);
+      // 20 degrees to turn, through north: just past 350 and not near 180.
+      expect(bearings.last, inInclusiveRange(350, 360));
+    });
+
+    testWidgets('with no lag the map follows at once', (tester) async {
+      final updates = <CameraUpdate>[];
+      var time = Duration.zero;
+      final follower = CameraFollower(
+        follow: const CameraFollow(
+          markerId: _driver,
+          bearing: CameraBearing.vehicle,
+          bearingLag: Duration.zero,
+        ),
+        moveCamera: updates.add,
+        now: () => time,
+      );
+
+      follower.onMarker(
+        Marker(markerId: _driver, position: at(0, 0), rotation: 20),
+      );
+      time = const Duration(milliseconds: 200);
+      follower.onMarker(
+        Marker(markerId: _driver, position: at(0, 0), rotation: 200),
+      );
+      follower.dispose();
+
+      expect(bearingOf(updates.last.toJson()), 200);
+    });
+
+    testWidgets('north up is not affected by the lag', (tester) async {
+      final controller = create(tester);
+      controller.followCamera(
+        const CameraFollow(
+          markerId: _driver,
+          bearingLag: Duration(seconds: 2),
+        ),
+      );
+      platform.cameraMoves.clear();
+
+      controller.updateMarkers({_marker(at(100, 0))});
+      await tester.pump();
+      await pumpFor(tester, const Duration(seconds: 2));
+
+      expect(
+        platform.cameraMoves.map((m) => cameraOf(m)['bearing']).toSet(),
+        {0},
+      );
+      controller.dispose();
+    });
   });
 
   testWidgets('keeps north up by default', (tester) async {
@@ -276,6 +406,7 @@ void main() {
 
   test('CameraFollow has sensible defaults', () {
     const follow = CameraFollow(markerId: _driver);
+    expect(follow.bearingLag, const Duration(milliseconds: 600));
     expect(follow.zoom, 17);
     expect(follow.tilt, 0);
     expect(follow.bearing, CameraBearing.north);

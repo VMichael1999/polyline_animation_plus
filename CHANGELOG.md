@@ -2,11 +2,15 @@
 
 ### Breaking behavior
 
+- `followRoute` rounds the corners when the marker turns (`turnSmoothingMeters`, 0 to turn at once), and `CameraFollow` turns the map with a lag (`bearingLag`, `Duration.zero` to turn at once).
 - Polyline animations now pause when the app goes to the background and go on from the same place when it returns. Use `pauseInBackground: false` on `MapAnimationController` to keep the old behavior.
 - When the system asks to reduce motion, polylines are drawn as they are and markers move at once. Use `respectReduceMotion: false` to keep animating.
 
 ### New
 
+- `VehicleTracking.turnSmoothingMeters` (default 8): with `followRoute`, the marker turns gradually around corners instead of jumping.
+- `CameraFollow.bearingLag` (default 600 ms): when the map turns with the vehicle, it catches up a little later, so in a curve the vehicle is seen from the side.
+- `MapAnimationController.markerFrameBuilder`: change a marker on every frame before it is drawn, for example to pick an icon for the direction it faces.
 - `PulseAnimator`: a light that travels along a dimmed copy of the route (extra polyline `<id>#glow`).
 - `DashFlowAnimator`: dashes that flow along the route. Its limitation (pattern in pixels, cut in meters) is documented.
 - `AnimatedPolyline.segmented` and `RouteSegment`: a route in several colors, with the animator applied to the whole route.

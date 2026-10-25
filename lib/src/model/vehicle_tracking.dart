@@ -51,6 +51,7 @@ final class VehicleTracking {
     this.snapToleranceMeters = 30,
     this.followRoute = false,
     this.consumeRoute = true,
+    this.turnSmoothingMeters = 8,
     this.onOffRoute,
   });
 
@@ -80,6 +81,11 @@ final class VehicleTracking {
   /// Whether the travelled part is drawn with [traveled] (or hidden) and the
   /// rest with [remaining]. When false the whole route keeps one style.
   final bool consumeRoute;
+
+  /// How much the corners of the route are rounded when the marker turns, in
+  /// meters: the rotation changes gradually over twice this distance around a
+  /// corner instead of jumping. Only used with [followRoute]. 0 turns at once.
+  final double turnSmoothingMeters;
 
   /// Called with the position that is farther than [snapToleranceMeters] from
   /// the route, so the app can ask for a new one. The marker goes to that
