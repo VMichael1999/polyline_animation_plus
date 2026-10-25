@@ -9,6 +9,10 @@ import '../managers/animated_marker_manager.dart';
 import '../managers/animated_polyline_manager.dart';
 import '../model/animated_polyline.dart';
 import '../model/marker_animation.dart';
+import '../model/vehicle_tracking.dart';
+import 'marker_controller.dart';
+import 'tracked_vehicle.dart';
+import 'vehicle_tracker.dart';
 
 /// Called with the polyline that was just drawn on the map.
 typedef PolylineListener = void Function(Polyline);
@@ -78,6 +82,8 @@ final class MapAnimationController {
 
   final Map<MarkerId, Marker> _markers = {};
 
+  final Map<MarkerId, TrackedVehicle> _vehicles = {};
+
   final Map<PolylineId, Polyline> _polylines = {};
 
   void _initialize(Set<Marker> markers, Set<AnimatedPolyline> polylines) {
@@ -133,10 +139,14 @@ final class MapAnimationController {
   /// A marker that is already on the map glides to its new position. Positions
   /// that arrive during a move wait in a queue.
   void updateMarkers(Set<Marker> updatedMarkers) {
-    final newMarkersById = keyByMarkerId(updatedMarkers);
+    // The marker of a tracked vehicle is moved by updateVehicle, so it is
+    // neither removed nor moved from here.
+    final newMarkersById = keyByMarkerId(
+      updatedMarkers.where((m) => !_vehicles.containsKey(m.markerId)),
+    );
 
     // Identify markers that were added, removed, or updated
-    final oldIds = _markers.keys.toSet();
+    final oldIds = _markers.keys.toSet()..removeAll(_vehicles.keys);
     final newIds = newMarkersById.keys.toSet();
 
     final removedIds = oldIds.difference(
@@ -176,10 +186,11 @@ final class MapAnimationController {
 
     // An animated polyline is only on the map after its first frame, but its
     // controller exists from the start, so both must be considered.
+    final vehicleLines = {for (final v in _vehicles.values) ...v.polylineIds};
     final oldIds = {
       ..._polylines.keys,
       ..._animatedPolylineManager.activePolylineIds,
-    };
+    }..removeAll(vehicleLines);
     final newIds = newPolyLineById.keys.toSet();
 
     final removedIds = oldIds.difference(newIds);
@@ -208,6 +219,142 @@ final class MapAnimationController {
     }
   }
 
+  /// Starts following a vehicle along a route.
+  ///
+  /// From now on the position given to [updateVehicle] is put on
+  /// [VehicleTracking.route], the marker moves along it and the route is drawn
+  /// as the part already travelled and the part still to go.
+  ///
+  /// The marker of the vehicle is created at the start of the route if it does
+  /// not exist. While the vehicle is tracked, [updateMarkers] does not move or
+  /// remove its marker. Tracking the same marker again replaces the previous
+  /// tracking.
+  void trackVehicle(VehicleTracking tracking) {
+    stopTrackingVehicle(tracking.markerId);
+
+    final id = tracking.markerId;
+    final base = _markers[id];
+    final vehicle = TrackedVehicle(
+      tracking,
+      base ?? Marker(markerId: id, position: tracking.route.first),
+    );
+    _vehicles[id] = vehicle;
+
+    if (base == null) {
+      _updateMarker({vehicle.baseMarker});
+      _animatedMarkersManager.push({vehicle.baseMarker});
+    }
+    _drawRoute(vehicle, 0);
+  }
+
+  /// Gives the new position of a tracked vehicle, for example from the GPS.
+  ///
+  /// If the position is within [VehicleTracking.snapToleranceMeters] of the
+  /// route it is put on the route and the marker moves to it, following the
+  /// route if [VehicleTracking.followRoute] is set. Otherwise
+  /// [VehicleTracking.onOffRoute] is called and the marker goes to the position
+  /// as it is.
+  ///
+  /// [markerId] is only needed when more than one vehicle is tracked.
+  void updateVehicle(LatLng position, {MarkerId? markerId}) {
+    final vehicle = _vehicleFor(markerId);
+    final fix = vehicle.tracker.update(position);
+
+    if (!fix.onRoute) {
+      vehicle.tracking.onOffRoute?.call(position);
+      _animatedMarkersManager.push({
+        vehicle.baseMarker.copyWith(positionParam: position),
+      });
+      return;
+    }
+
+    final marker = vehicle.baseMarker.copyWith(positionParam: fix.position);
+    _animatedMarkersManager.push(
+      {marker},
+      routes: vehicle.tracking.followRoute
+          ? {vehicle.markerId: RouteTarget(vehicle.path, fix.along!)}
+          : const {},
+    );
+  }
+
+  /// Stops following the vehicle with this marker and removes its route from
+  /// the map. The marker stays where it is. Does nothing if it is not tracked.
+  void stopTrackingVehicle(MarkerId markerId) {
+    final vehicle = _vehicles.remove(markerId);
+    if (vehicle == null) return;
+
+    _applyPolylines(removeIds: vehicle.polylineIds);
+  }
+
+  TrackedVehicle _vehicleFor(MarkerId? markerId) {
+    if (markerId != null) {
+      final vehicle = _vehicles[markerId];
+      if (vehicle == null) {
+        throw StateError('The vehicle $markerId is not being tracked');
+      }
+      return vehicle;
+    }
+    if (_vehicles.length != 1) {
+      throw StateError(
+        _vehicles.isEmpty
+            ? 'No vehicle is being tracked. Call trackVehicle first.'
+            : 'More than one vehicle is tracked: pass the markerId.',
+      );
+    }
+    return _vehicles.values.single;
+  }
+
+  /// Draws the route of [vehicle] for the marker [along] meters from the start.
+  void _drawRoute(TrackedVehicle vehicle, double along) {
+    final lines = vehicle.linesAt(along);
+    vehicle.drawnAlong = along;
+    _applyPolylines(
+      upserts: [
+        if (lines.traveled != null) lines.traveled!,
+        if (lines.remaining != null) lines.remaining!
+      ],
+      removeIds: {
+        if (lines.traveled == null) vehicle.traveledId,
+        if (lines.remaining == null) vehicle.remainingId,
+      },
+    );
+  }
+
+  /// Keeps the route in step with the marker as it is shown, not as the last
+  /// position that arrived.
+  void _followShownMarker(Marker marker) {
+    final vehicle = _vehicles[marker.markerId];
+    if (vehicle == null || !vehicle.tracking.consumeRoute) return;
+
+    final projection = vehicle.path.nearest(
+      marker.position,
+      from: vehicle.shownAlong,
+      behind: vehicle.tracker.behindMeters,
+      ahead: VehicleTracker.aheadMeters,
+    );
+    if (projection == null) return;
+
+    vehicle.shownAlong = projection.along;
+    final drawn = vehicle.drawnAlong;
+    if (drawn != null && (projection.along - drawn).abs() < 0.5) return;
+    _drawRoute(vehicle, projection.along);
+  }
+
+  /// Adds, changes and removes several polylines with one call to the map.
+  void _applyPolylines({
+    Iterable<Polyline> upserts = const [],
+    Set<PolylineId> removeIds = const {},
+  }) {
+    final previous = Set<Polyline>.from(_polylines.values);
+    for (final id in removeIds) {
+      _polylines.remove(id);
+    }
+    for (final polyline in upserts) {
+      _polylines[polyline.polylineId] = polyline;
+    }
+    _updatePolylinesOnMap(previous, _polylines.values.toSet());
+  }
+
   /// Update Polyline directly on the map
   /// This method is used to update a static polyline that does not have an animator.
   /// Useful for update the polyline on marker update using [markerListener].
@@ -233,6 +380,8 @@ final class MapAnimationController {
 
     // Notify external listeners
     markerListener?.call(updatedMarkers);
+
+    if (_vehicles.isNotEmpty) updatedMarkers.forEach(_followShownMarker);
 
     _updateMarkersOnMap(prevMarkers, _markers.values.toSet());
   }
@@ -282,5 +431,6 @@ final class MapAnimationController {
     _animatedPolylineManager.dispose();
     _markers.clear();
     _polylines.clear();
+    _vehicles.clear();
   }
 }
