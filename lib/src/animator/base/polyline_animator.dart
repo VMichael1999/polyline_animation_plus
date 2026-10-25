@@ -36,6 +36,10 @@ abstract class PolylineAnimator {
 
   Polyline animate(Polyline polyline, double progress);
 
+  /// Called once when the animation reaches its end.
+  ///
+  /// It is not called when the animation is disposed or removed before it
+  /// finishes, nor for animations that repeat forever, because they never end.
   void onAnimationStop() {}
 
   @override
